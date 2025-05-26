@@ -5,21 +5,15 @@ run = "npm run dev"
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npm run dev"]
-
-[[ports]]
-localPort = 172
-
-[[ports]]
-localPort = 5000
-externalPort = 5000
+run = ["sh", "-c", "npm run preview"]
+build = ["sh", "-c", "npm run build"]
 
 [[ports]]
 localPort = 5173
 externalPort = 5173
 
 [workflows]
-runButton = "Start Development Server"
+runButton = "Démarrer Application"
 
 [[workflows.workflow]]
 name = "Start Development Server"
@@ -28,4 +22,39 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx vite --host 0.0.0.0 --port 5173"
+args = "npm install"
+
+[[workflows.workflow]]
+name = "Run app"
+mode = "sequential"
+author = 43127296
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Démarrer Application"
+author = 43127296
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Build Production"
+author = 43127296
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run preview"
