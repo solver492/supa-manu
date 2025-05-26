@@ -117,18 +117,34 @@ const reportTypes = [
 
 const dataPointsOptions = {
   financial_summary: [
-    { id: "revenue", label: "Revenus Totaux" }, { id: "avg_invoice_value", label: "Valeur Moyenne Facture" },
-    { id: "paid_invoices", label: "Factures Payées" }, {id: "pending_invoices", label: "Factures en Attente"}
+    { id: "revenue", label: "Revenus Totaux" }, 
+    { id: "avg_invoice_value", label: "Valeur Moyenne Facture" },
+    { id: "paid_invoices", label: "Factures Payées" }, 
+    { id: "pending_invoices", label: "Factures en Attente" },
+    { id: "overdue_invoices", label: "Factures en Retard" },
+    { id: "monthly_growth", label: "Croissance Mensuelle" }
   ],
   operational_efficiency: [
-    { id: "completed_jobs", label: "Prestations Terminées" }, { id: "avg_job_duration", label: "Durée Moyenne Prestation (Simulée)" },
-    { id: "jobs_per_team", label: "Prestations par Équipe (Top)" }, {id: "jobs_status_distribution", label: "Répartition Statuts Prestations"}
+    { id: "completed_services", label: "Prestations Terminées" }, 
+    { id: "pending_services", label: "Prestations en Cours" },
+    { id: "cancelled_services", label: "Prestations Annulées" },
+    { id: "avg_service_duration", label: "Durée Moyenne Prestation" },
+    { id: "services_per_team", label: "Prestations par Équipe" }, 
+    { id: "services_status_distribution", label: "Répartition Statuts Prestations" }
   ],
   customer_insights: [
-    { id: "total_customers", label: "Nombre Total de Clients" }, { id: "new_customers_period", label: "Nouveaux Clients (Période)" },
+    { id: "total_customers", label: "Nombre Total de Clients" }, 
+    { id: "new_customers_period", label: "Nouveaux Clients (Période)" },
+    { id: "active_customers", label: "Clients Actifs" },
+    { id: "customer_satisfaction", label: "Satisfaction Client (Simulée)" },
+    { id: "repeat_customers", label: "Clients Récurrents" }
   ],
   vehicle_utilization: [
-    { id: "total_vehicles", label: "Nombre Total de Véhicules" }, {id: "vehicle_status_distribution", label: "Répartition Statuts Véhicules"}
+    { id: "total_vehicles", label: "Nombre Total de Véhicules" }, 
+    { id: "available_vehicles", label: "Véhicules Disponibles" },
+    { id: "vehicle_status_distribution", label: "Répartition Statuts Véhicules" },
+    { id: "maintenance_due", label: "Véhicules en Maintenance" },
+    { id: "utilization_rate", label: "Taux d'Utilisation" }
   ],
 };
 
@@ -172,6 +188,14 @@ const ReportsPage = () => {
       description: "Chargement...", 
       chartType: 'line',
       data: []
+    },
+    vehicles: { 
+      title: "Véhicules Disponibles", 
+      value: "0/0", 
+      icon: <Truck />, 
+      description: "Chargement...", 
+      chartType: 'pie',
+      data: []
     }
   });
 
@@ -194,77 +218,134 @@ const ReportsPage = () => {
     }
 
     try {
-        // 1. Chiffre d'Affaires (Payé)
-        const { data: invoicesData, error: invoicesError } = await supabase
-            .from('factures')
-            .select('montant_ttc, statut')
-            .eq('statut', 'Payée')
-            .gte('date_emission', startDate.toISOString())
-            .lte('date_emission', endDate.toISOString());
+        // Requêtes parallèles pour optimiser les performances
+        const [invoicesResponse, servicesResponse, clientsResponse, vehiclesResponse, employeesResponse] = await Promise.all([
+            // 1. Chiffre d'Affaires (Payé)
+            supabase
+                .from('factures')
+                .select('montant_ttc, statut, date_emission')
+                .eq('statut', 'Payée')
+                .gte('date_emission', startDate.toISOString())
+                .lte('date_emission', endDate.toISOString()),
             
-        if (invoicesError) {
-            console.error("Erreur factures:", invoicesError);
-            throw invoicesError;
-        }
+            // 2. Prestations
+            supabase
+                .from('prestations')
+                .select('id, statut, date_prestation, equipe_assignee')
+                .gte('date_prestation', startDate.toISOString())
+                .lte('date_prestation', endDate.toISOString()),
+            
+            // 3. Clients
+            supabase
+                .from('clients')
+                .select('id, nom, created_at')
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString()),
+            
+            // 4. Véhicules
+            supabase
+                .from('vehicules')
+                .select('id, statut, type'),
+            
+            // 5. Employés
+            supabase
+                .from('employes')
+                .select('id, nom, poste')
+        ]);
 
-        const totalRevenue = invoicesData?.reduce((sum, inv) => {
+        // Vérification des erreurs
+        if (invoicesResponse.error) throw invoicesResponse.error;
+        if (servicesResponse.error) throw servicesResponse.error;
+        if (clientsResponse.error) throw clientsResponse.error;
+        if (vehiclesResponse.error) throw vehiclesResponse.error;
+        if (employeesResponse.error) throw employeesResponse.error;
+
+        // Calculs financiers
+        const totalRevenue = invoicesResponse.data?.reduce((sum, inv) => {
             const amount = typeof inv.montant_ttc === 'string' ? 
                 parseFloat(inv.montant_ttc.replace(',', '.')) : 
                 (inv.montant_ttc || 0);
             return sum + amount;
         }, 0) || 0;
 
-        // 2. Prestations Terminées
-        const { data: servicesData, error: servicesError } = await supabase
-            .from('prestations')
-            .select('id, statut')
-            .eq('statut', 'Terminée')
-            .gte('date_prestation', startDate.toISOString())
-            .lte('date_prestation', endDate.toISOString());
+        // Calculs opérationnels
+        const completedServices = servicesResponse.data?.filter(s => s.statut === 'Terminée').length || 0;
+        const totalServices = servicesResponse.data?.length || 0;
+        
+        // Calculs clients
+        const totalClientsAll = await supabase.from('clients').select('id', { count: 'exact', head: true });
+        const totalClients = totalClientsAll.count || 0;
+        const newClientsInPeriod = clientsResponse.data?.length || 0;
+
+        // Calculs véhicules
+        const totalVehicles = vehiclesResponse.data?.length || 0;
+        const availableVehicles = vehiclesResponse.data?.filter(v => v.statut === 'Disponible').length || 0;
+
+        // Données pour les graphiques
+        const revenueChartData = invoicesResponse.data?.reduce((acc, inv) => {
+            const date = format(parseISO(inv.date_emission), 'dd/MM');
+            const amount = typeof inv.montant_ttc === 'string' ? 
+                parseFloat(inv.montant_ttc.replace(',', '.')) : 
+                (inv.montant_ttc || 0);
             
-        if (servicesError) {
-            console.error("Erreur prestations:", servicesError);
-            throw servicesError;
-        }
+            const existing = acc.find(item => item.name === date);
+            if (existing) {
+                existing.value += amount;
+            } else {
+                acc.push({ name: date, value: amount });
+            }
+            return acc;
+        }, []).slice(-7) || [];
 
-        const completedServices = servicesData?.length || 0;
-
-        // 3. Total Clients
-        const { data: clientsData, error: clientsError } = await supabase
-            .from('clients')
-            .select('id');
-            
-        if (clientsError) {
-            console.error("Erreur clients:", clientsError);
-            throw clientsError;
-        }
-
-        const totalClients = clientsData?.length || 0;
+        const servicesChartData = servicesResponse.data?.reduce((acc, service) => {
+            const date = format(parseISO(service.date_prestation), 'dd/MM');
+            const existing = acc.find(item => item.name === date);
+            if (existing) {
+                existing.value += 1;
+            } else {
+                acc.push({ name: date, value: 1 });
+            }
+            return acc;
+        }, []).slice(-7) || [];
 
         const newReportData = {
             financial: {
                 title: "Chiffre d'Affaires (Payé)",
                 value: `${totalRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
                 icon: <DollarSign />,
-                description: `Sur ${timeRangeLabels[timeRange]?.toLowerCase() || 'la période'}`,
+                description: `${invoicesResponse.data?.length || 0} factures payées - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
                 chartType: 'line',
-                data: []
+                data: revenueChartData
             },
             operational: {
                 title: "Prestations Terminées",
-                value: completedServices.toString(),
+                value: `${completedServices}/${totalServices}`,
                 icon: <Truck />,
-                description: `Sur ${timeRangeLabels[timeRange]?.toLowerCase() || 'la période'}`,
+                description: `${((completedServices/totalServices)*100 || 0).toFixed(1)}% de réussite - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
                 chartType: 'bar',
-                data: []
+                data: servicesChartData
             },
             customer: {
                 title: "Total Clients",
                 value: totalClients.toString(),
                 icon: <Users />,
-                description: `Au ${format(now, "dd/MM/yyyy")}`,
+                description: `+${newClientsInPeriod} nouveaux clients - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
                 chartType: 'line',
-                data: []
+                data: [
+                    { name: 'Existants', value: totalClients - newClientsInPeriod },
+                    { name: 'Nouveaux', value: newClientsInPeriod }
+                ]
+            },
+            vehicles: {
+                title: "Véhicules Disponibles",
+                value: `${availableVehicles}/${totalVehicles}`,
+                icon: <Truck />,
+                description: `${((availableVehicles/totalVehicles)*100 || 0).toFixed(1)}% de disponibilité`,
+                chartType: 'pie',
+                data: [
+                    { name: 'Disponibles', value: availableVehicles },
+                    { name: 'Occupés', value: totalVehicles - availableVehicles }
+                ]
             }
         };
 
@@ -360,25 +441,100 @@ const ReportsPage = () => {
         const pointLabel = dataPointsOptions[selectedReportType]?.find(opt => opt.id === pointId)?.label || pointId;
         let value = 'N/A (Donnée non calculée)';
 
-        if (selectedReportType === 'financial_summary') {
-            if (pointId === 'revenue') {
-                const { data, error } = await supabase.from('factures').select('montant_ttc').eq('statut', 'Payée').gte('date_emission', sDate).lte('date_emission', eDate);
-                if (!error) value = `${data.reduce((sum, inv) => sum + (inv.montant_ttc || 0), 0).toFixed(2)} €`;
-            } else if (pointId === 'paid_invoices') {
-                 const { count, error } = await supabase.from('factures').select('*', {count: 'exact', head:true}).eq('statut', 'Payée').gte('date_emission', sDate).lte('date_emission', eDate);
-                 if(!error) value = `${count} factures`;
+        try {
+            if (selectedReportType === 'financial_summary') {
+                switch (pointId) {
+                    case 'revenue':
+                        const { data: revenueData, error: revenueError } = await supabase
+                            .from('factures')
+                            .select('montant_ttc')
+                            .eq('statut', 'Payée')
+                            .gte('date_emission', sDate)
+                            .lte('date_emission', eDate);
+                        if (!revenueError) {
+                            const total = revenueData.reduce((sum, inv) => sum + (parseFloat(inv.montant_ttc) || 0), 0);
+                            value = `${total.toFixed(2)} €`;
+                        }
+                        break;
+                    case 'paid_invoices':
+                        const { count: paidCount, error: paidError } = await supabase
+                            .from('factures')
+                            .select('*', {count: 'exact', head: true})
+                            .eq('statut', 'Payée')
+                            .gte('date_emission', sDate)
+                            .lte('date_emission', eDate);
+                        if (!paidError) value = `${paidCount} factures`;
+                        break;
+                    case 'pending_invoices':
+                        const { count: pendingCount, error: pendingError } = await supabase
+                            .from('factures')
+                            .select('*', {count: 'exact', head: true})
+                            .eq('statut', 'En Attente')
+                            .gte('date_emission', sDate)
+                            .lte('date_emission', eDate);
+                        if (!pendingError) value = `${pendingCount} factures`;
+                        break;
+                }
+            } else if (selectedReportType === 'operational_efficiency') {
+                switch (pointId) {
+                    case 'completed_services':
+                        const { count: completedCount, error: completedError } = await supabase
+                            .from('prestations')
+                            .select('*', {count: 'exact', head: true})
+                            .eq('statut', 'Terminée')
+                            .gte('date_prestation', sDate)
+                            .lte('date_prestation', eDate);
+                        if (!completedError) value = `${completedCount} prestations`;
+                        break;
+                    case 'pending_services':
+                        const { count: pendingServicesCount, error: pendingServicesError } = await supabase
+                            .from('prestations')
+                            .select('*', {count: 'exact', head: true})
+                            .eq('statut', 'En Cours')
+                            .gte('date_prestation', sDate)
+                            .lte('date_prestation', eDate);
+                        if (!pendingServicesError) value = `${pendingServicesCount} prestations`;
+                        break;
+                }
+            } else if (selectedReportType === 'customer_insights') {
+                switch (pointId) {
+                    case 'total_customers':
+                        const { count: totalCustomers, error: customersError } = await supabase
+                            .from('clients')
+                            .select('*', {count: 'exact', head: true});
+                        if (!customersError) value = `${totalCustomers} clients`;
+                        break;
+                    case 'new_customers_period':
+                        const { count: newCustomers, error: newCustomersError } = await supabase
+                            .from('clients')
+                            .select('*', {count: 'exact', head: true})
+                            .gte('created_at', sDate)
+                            .lte('created_at', eDate);
+                        if (!newCustomersError) value = `${newCustomers} nouveaux clients`;
+                        break;
+                }
+            } else if (selectedReportType === 'vehicle_utilization') {
+                switch (pointId) {
+                    case 'total_vehicles':
+                        const { count: totalVehicles, error: vehiclesError } = await supabase
+                            .from('vehicules')
+                            .select('*', {count: 'exact', head: true});
+                        if (!vehiclesError) value = `${totalVehicles} véhicules`;
+                        break;
+                    case 'available_vehicles':
+                        const { count: availableVehicles, error: availableError } = await supabase
+                            .from('vehicules')
+                            .select('*', {count: 'exact', head: true})
+                            .eq('statut', 'Disponible');
+                        if (!availableError) value = `${availableVehicles} véhicules disponibles`;
+                        break;
+                }
             }
-        } else if (selectedReportType === 'operational_efficiency') {
-             if (pointId === 'completed_services') {
-                const { count, error } = await supabase.from('prestations').select('*', {count: 'exact', head:true}).eq('statut', 'Terminée').gte('date_prestation', sDate).lte('date_prestation', eDate);
-                 if(!error) value = `${count} prestations`;
-             }
-        } else if (selectedReportType === 'customer_insights') {
-            if (pointId === 'total_customers') {
-                const { count, error } = await supabase.from('clients').select('*', {count: 'exact', head:true});
-                if(!error) value = `${count} clients`;
-            }
+        } catch (error) {
+            console.error(`Erreur calcul ${pointId}:`, error);
+            value = 'Erreur de calcul';
         }
+        
         pointsDetails.push({ id: pointId, label: pointLabel, value });
     }
 
@@ -432,10 +588,11 @@ const ReportsPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <ReportCard {...reportData.financial} />
         <ReportCard {...reportData.operational} />
         <ReportCard {...reportData.customer} />
+        {reportData.vehicles && <ReportCard {...reportData.vehicles} />}
       </div>
 
       <Card className="shadow-xl border-none bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
