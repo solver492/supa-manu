@@ -35,7 +35,7 @@ const FactureViewDialog = ({ isOpen, onClose, facture }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ const FactureViewDialog = ({ isOpen, onClose, facture }) => {
               <FileText className="h-5 w-5 text-primary" />
               Détails de la Facture
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium">Date d'émission</p>
                 <p className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
@@ -77,30 +77,28 @@ const FactureViewDialog = ({ isOpen, onClose, facture }) => {
               </div>
               
               <div>
-                <p className="text-sm font-medium">Montant</p>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium">Montant HT</p>
-                    <p className="text-lg font-bold text-primary flex items-center gap-2">
-                      <Euro className="h-4 w-4" />
+                <p className="text-sm font-medium mb-3">Montant</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Montant HT</span>
+                    <span className="font-bold text-primary">
                       {formatMontant(parseFloat(facture.montant))}
-                    </p>
+                    </span>
                   </div>
 
-                  <div>
-                    <p className="text-sm font-medium">TVA ({(parseFloat(facture.taux_tva || 0) * 100).toFixed(0)}%)</p>
-                    <p className="text-lg font-bold text-primary flex items-center gap-2">
-                      <Euro className="h-4 w-4" />
-                      {formatMontant(parseFloat(15) * parseFloat(20))}
-                    </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">TVA ({(parseFloat(facture.taux_tva || 0) * 100).toFixed(0)}%)</span>
+                    <span className="font-bold text-primary">
+                      {formatMontant(parseFloat(facture.montant || 0) * parseFloat(facture.taux_tva || 0))}
+                    </span>
                   </div>
 
-                  <div>
-                    <p className="text-sm font-medium">Montant TTC</p>
-                    <p className="text-lg font-bold text-primary flex items-center gap-2">
+                  <div className="flex justify-between items-center border-t pt-2">
+                    <span className="text-sm font-medium">Montant TTC</span>
+                    <span className="text-lg font-bold text-primary flex items-center gap-1">
                       <Euro className="h-4 w-4" />
                       {formatMontant(parseFloat(facture.montant || 0) * (1 + parseFloat(facture.taux_tva || 0)))}
-                    </p>
+                    </span>
                   </div>
                 </div>
               </div>
