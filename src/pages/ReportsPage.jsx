@@ -223,7 +223,7 @@ const ReportsPage = () => {
             // 1. Chiffre d'Affaires (Payé)
             supabase
                 .from('factures')
-                .select('montant_ttc, statut, date_emission')
+                .select('montant_ttc, montant, taux_tva, statut, date_emission, numero_facture')
                 .eq('statut', 'Payée')
                 .gte('date_emission', startDate.toISOString())
                 .lte('date_emission', endDate.toISOString()),
@@ -260,8 +260,14 @@ const ReportsPage = () => {
         if (vehiclesResponse.error) throw vehiclesResponse.error;
         if (employeesResponse.error) throw employeesResponse.error;
 
+        console.log("Invoices data:", invoicesResponse.data);
+        console.log("Services data:", servicesResponse.data);
+        console.log("Clients data:", clientsResponse.data);
+        console.log("Vehicles data:", vehiclesResponse.data);
+
         // Calculs financiers
         const totalRevenue = invoicesResponse.data?.reduce((sum, inv) => {
+            console.log("Processing invoice:", inv);
             // Essayer d'abord montant_ttc, sinon calculer à partir de montant (HT)
             let amount = 0;
             if (inv.montant_ttc) {
@@ -276,8 +282,11 @@ const ReportsPage = () => {
                 const tauxTVA = parseFloat(inv.taux_tva || 0.20);
                 amount = montantHT * (1 + tauxTVA);
             }
+            console.log("Calculated amount:", amount);
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0) || 0;
+        
+        console.log("Total revenue calculated:", totalRevenue);
 
         // Calculs opérationnels
         const completedServices = servicesResponse.data?.filter(s => s.statut === 'Terminée').length || 0;
@@ -292,8 +301,21 @@ const ReportsPage = () => {
         const totalVehicles = vehiclesResponse.data?.length || 0;
         const availableVehicles = vehiclesResponse.data?.filter(v => v.statut === 'Disponible').length || 0;
 
+        // Fallback: essayer de récupérer toutes les factures si aucune payée n'est trouvée
+        let allInvoicesForChart = invoicesResponse.data;
+        if (!allInvoicesForChart || allInvoicesForChart.length === 0) {
+            console.log("No paid invoices found, trying to get all invoices for chart...");
+            const allInvoicesResponse = await supabase
+                .from('factures')
+                .select('montant_ttc, montant, taux_tva, statut, date_emission')
+                .gte('date_emission', startDate.toISOString())
+                .lte('date_emission', endDate.toISOString())
+                .limit(10);
+            allInvoicesForChart = allInvoicesResponse.data || [];
+        }
+
         // Données pour les graphiques
-        const revenueChartData = invoicesResponse.data?.reduce((acc, inv) => {
+        const revenueChartData = allInvoicesForChart?.reduce((acc, inv) => {
             const date = format(parseISO(inv.date_emission), 'dd/MM');
             
             // Même logique de calcul que pour le total
@@ -320,6 +342,8 @@ const ReportsPage = () => {
             }
             return acc;
         }, []).slice(-7) || [];
+        
+        console.log("Revenue chart data:", revenueChartData);
 
         const servicesChartData = servicesResponse.data?.reduce((acc, service) => {
             const date = format(parseISO(service.date_prestation), 'dd/MM');
@@ -331,13 +355,16 @@ const ReportsPage = () => {
             }
             return acc;
         }, []).slice(-7) || [];
+        
+        console.log("Services chart data:", servicesChartData);
+        console.log("Completed services:", completedServices, "Total services:", totalServices);
 
         const newReportData = {
             financial: {
                 title: "Chiffre d'Affaires (Payé)",
                 value: `${totalRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
                 icon: <DollarSign />,
-                description: `${invoicesResponse.data?.length || 0} factures payées - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
+                description: `${invoicesResponse.data?.length || 0} factures payées (sur ${allInvoicesForChart?.length || 0} total) - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
                 chartType: 'line',
                 data: revenueChartData
             },
