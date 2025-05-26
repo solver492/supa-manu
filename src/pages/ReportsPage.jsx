@@ -231,7 +231,7 @@ const ReportsPage = () => {
             // 2. Prestations
             supabase
                 .from('prestations')
-                .select('id, statut, date_prestation, equipe_assignee')
+                .select('id, statut, date_prestation')
                 .gte('date_prestation', startDate.toISOString())
                 .lte('date_prestation', endDate.toISOString()),
             
