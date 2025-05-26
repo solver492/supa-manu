@@ -414,6 +414,81 @@ const ReportsPage = () => {
      printWindow.document.close();
   };
 
+  const downloadReportAsCSV = () => {
+    if (!generatedReportDetails) return;
+    
+    const csvContent = [
+      ['Type de Rapport', 'Période', 'Généré le'],
+      [generatedReportDetails.type, timeRangeLabels[generatedReportDetails.period], generatedReportDetails.generatedAt],
+      [''],
+      ['Données', 'Valeur'],
+      ...generatedReportDetails.pointsDetails.map(point => [point.label, point.value])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `rapport_${generatedReportDetails.type.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    toast({
+      title: "Téléchargement réussi",
+      description: "Le rapport CSV a été téléchargé avec succès.",
+    });
+  };
+
+  const downloadReportAsExcel = () => {
+    if (!generatedReportDetails) return;
+    
+    // Simulation d'un fichier Excel en format CSV avec en-têtes spécifiques
+    const excelContent = [
+      ['RAPPORT PERSONNALISÉ'],
+      [''],
+      ['Type de Rapport:', generatedReportDetails.type],
+      ['Période:', timeRangeLabels[generatedReportDetails.period]],
+      ['Généré le:', generatedReportDetails.generatedAt],
+      [''],
+      ['DONNÉES DÉTAILLÉES'],
+      ['Métrique', 'Valeur'],
+      ...generatedReportDetails.pointsDetails.map(point => [point.label, point.value])
+    ].map(row => row.join('\t')).join('\n');
+
+    const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `rapport_${generatedReportDetails.type.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xls`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    toast({
+      title: "Téléchargement réussi",
+      description: "Le rapport Excel a été téléchargé avec succès.",
+    });
+  };
+
+  const handleDownloadReport = () => {
+    if (!generatedReportDetails) return;
+    
+    switch (exportFormat) {
+      case 'pdf':
+        handlePrintReport();
+        break;
+      case 'csv':
+        downloadReportAsCSV();
+        break;
+      case 'xlsx':
+        downloadReportAsExcel();
+        break;
+      default:
+        toast({
+          title: "Format non supporté",
+          description: "Ce format d'export n'est pas encore disponible.",
+          variant: "destructive"
+        });
+    }
+  };
+
   const generateReport = async () => {
     if (!selectedReportType || selectedDataPoints.length === 0) {
       toast({ title: "Configuration incomplète", description: "Veuillez sélectionner un type et au moins un point de donnée.", variant: "destructive" });
@@ -552,13 +627,13 @@ const ReportsPage = () => {
     toast({
       title: `Rapport "${currentReportDetails.type}" généré`,
       description: `${currentReportDetails.pointsDetails.map(p => p.label).join(', ')} pour ${timeRangeLabels[currentReportDetails.period]}. Format: ${currentReportDetails.format}.`,
-      duration: 7000,
+      duration: 10000,
       action: (
         <div className="flex flex-col space-y-2">
             <Button variant="outline" size="sm" onClick={handlePrintReport}>
-                <Printer className="mr-2 h-4 w-4" /> Imprimer
+                <Printer className="mr-2 h-4 w-4" /> Imprimer PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={() => alert(`Simulation: Téléchargement du rapport en ${exportFormat.toUpperCase()}...`)}>
+            <Button variant="outline" size="sm" onClick={handleDownloadReport}>
                 <Download className="mr-2 h-4 w-4" /> Télécharger ({exportFormat.toUpperCase()})
             </Button>
         </div>
@@ -612,13 +687,13 @@ const ReportsPage = () => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="exportFormat" className="font-semibold">Format d'Export (Simulation)</Label>
+              <Label htmlFor="exportFormat" className="font-semibold">Format d'Export</Label>
               <Select value={exportFormat} onValueChange={setExportFormat}>
                 <SelectTrigger id="exportFormat"><SelectValue placeholder="Choisir un format" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf">PDF (Impression)</SelectItem>
-                  <SelectItem value="csv">CSV (Simulation)</SelectItem>
-                  <SelectItem value="xlsx">Excel (XLSX) (Simulation)</SelectItem>
+                  <SelectItem value="csv">CSV (Téléchargement)</SelectItem>
+                  <SelectItem value="xlsx">Excel (XLS)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
