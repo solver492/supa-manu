@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   AlertDialog,
@@ -10,23 +11,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const DeleteEmployeeDialog = ({ isOpen, onClose, onConfirm, employeeName }) => {
+export const DeleteEmployeeDialog = ({ employee, onClose, onConfirm }) => {
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog open={!!employee} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cet employé ?</AlertDialogTitle>
           <AlertDialogDescription>
-            Cette action est irréversible. L'employé "{employeeName}" sera définitivement supprimé.
+            Cette action est irréversible. L'employé "{employee?.nom}" sera définitivement supprimé.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Annuler</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm} className="bg-destructive hover:bg-destructive/90">
+            Supprimer
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 };
-
-export default DeleteEmployeeDialog;

@@ -56,6 +56,7 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
     'Formation'
   ];
 
+  // Initialiser le formulaire avec les données de l'employé si en mode édition
   useEffect(() => {
     if (employee) {
       setFormData({
@@ -73,6 +74,7 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
         actif: employee.actif !== undefined ? employee.actif : true
       });
     } else {
+      // Réinitialiser le formulaire
       setFormData({
         nom: '',
         telephone: '',
@@ -91,6 +93,20 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
     setErrors({});
   }, [employee, isOpen]);
 
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Effacer l'erreur du champ si elle existe
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: null
+      }));
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -108,20 +124,16 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
       newErrors.telephone = 'Le téléphone est requis';
     }
 
-    if (!formData.poste) {
+    if (!formData.poste.trim()) {
       newErrors.poste = 'Le poste est requis';
     }
 
-    if (!formData.equipe) {
+    if (!formData.equipe.trim()) {
       newErrors.equipe = 'L\'équipe est requise';
     }
 
-    if (formData.salaire_journalier && isNaN(parseFloat(formData.salaire_journalier))) {
-      newErrors.salaire_journalier = 'Le salaire doit être un nombre valide';
-    }
-
-    if (isNaN(parseInt(formData.nb_manutentionnaires_equipe)) || parseInt(formData.nb_manutentionnaires_equipe) < 1) {
-      newErrors.nb_manutentionnaires_equipe = 'Le nombre doit être un entier positif';
+    if (!formData.salaire_journalier || parseFloat(formData.salaire_journalier) <= 0) {
+      newErrors.salaire_journalier = 'Le salaire journalier doit être supérieur à 0';
     }
 
     setErrors(newErrors);
@@ -132,21 +144,6 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
     e.preventDefault();
     if (validateForm()) {
       onSubmit(formData);
-    }
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-
-    // Effacer l'erreur pour ce champ
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
     }
   };
 
@@ -184,33 +181,31 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="jean.dupont@exemple.com"
+                placeholder="jean.dupont@email.com"
                 className={errors.email ? 'border-red-500' : ''}
               />
               {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="telephone">Téléphone *</Label>
               <Input
                 id="telephone"
                 value={formData.telephone}
                 onChange={(e) => handleInputChange('telephone', e.target.value)}
-                placeholder="Ex: 01 23 45 67 89"
+                placeholder="06 12 34 56 78"
                 className={errors.telephone ? 'border-red-500' : ''}
               />
               {errors.telephone && <p className="text-sm text-red-500">{errors.telephone}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date_embauche">Date d'embauche</Label>
+              <Label htmlFor="avatar_url">URL Avatar</Label>
               <Input
-                id="date_embauche"
-                type="date"
-                value={formData.date_embauche}
-                onChange={(e) => handleInputChange('date_embauche', e.target.value)}
+                id="avatar_url"
+                value={formData.avatar_url}
+                onChange={(e) => handleInputChange('avatar_url', e.target.value)}
+                placeholder="https://example.com/avatar.jpg"
               />
             </div>
           </div>
@@ -219,10 +214,7 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="poste">Poste *</Label>
-              <Select 
-                value={formData.poste} 
-                onValueChange={(value) => handleInputChange('poste', value)}
-              >
+              <Select value={formData.poste} onValueChange={(value) => handleInputChange('poste', value)}>
                 <SelectTrigger className={errors.poste ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Sélectionner un poste" />
                 </SelectTrigger>
@@ -239,10 +231,7 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
 
             <div className="space-y-2">
               <Label htmlFor="equipe">Équipe *</Label>
-              <Select 
-                value={formData.equipe} 
-                onValueChange={(value) => handleInputChange('equipe', value)}
-              >
+              <Select value={formData.equipe} onValueChange={(value) => handleInputChange('equipe', value)}>
                 <SelectTrigger className={errors.equipe ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Sélectionner une équipe" />
                 </SelectTrigger>
@@ -256,28 +245,21 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
               </Select>
               {errors.equipe && <p className="text-sm text-red-500">{errors.equipe}</p>}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="nb_manutentionnaires_equipe">Nombre de Manutentionnaires dans l'équipe</Label>
+              <Label htmlFor="nb_manutentionnaires_equipe">Nb. Manutentionnaires dans l'équipe</Label>
               <Input
                 id="nb_manutentionnaires_equipe"
                 type="number"
                 min="1"
                 value={formData.nb_manutentionnaires_equipe}
                 onChange={(e) => handleInputChange('nb_manutentionnaires_equipe', e.target.value)}
-                className={errors.nb_manutentionnaires_equipe ? 'border-red-500' : ''}
               />
-              {errors.nb_manutentionnaires_equipe && <p className="text-sm text-red-500">{errors.nb_manutentionnaires_equipe}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="disponibilite">Disponibilité</Label>
-              <Select 
-                value={formData.disponibilite} 
-                onValueChange={(value) => handleInputChange('disponibilite', value)}
-              >
+              <Select value={formData.disponibilite} onValueChange={(value) => handleInputChange('disponibilite', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner la disponibilité" />
                 </SelectTrigger>
@@ -292,40 +274,43 @@ export const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="salaire_journalier">Salaire Journalier (€)</Label>
-            <Input
-              id="salaire_journalier"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.salaire_journalier}
-              onChange={(e) => handleInputChange('salaire_journalier', e.target.value)}
-              placeholder="Ex: 150.00"
-              className={errors.salaire_journalier ? 'border-red-500' : ''}
-            />
-            {errors.salaire_journalier && <p className="text-sm text-red-500">{errors.salaire_journalier}</p>}
+          {/* Informations financières et dates */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="salaire_journalier">Salaire journalier (€) *</Label>
+              <Input
+                id="salaire_journalier"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.salaire_journalier}
+                onChange={(e) => handleInputChange('salaire_journalier', e.target.value)}
+                placeholder="150.00"
+                className={errors.salaire_journalier ? 'border-red-500' : ''}
+              />
+              {errors.salaire_journalier && <p className="text-sm text-red-500">{errors.salaire_journalier}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date_embauche">Date d'embauche</Label>
+              <Input
+                id="date_embauche"
+                type="date"
+                value={formData.date_embauche}
+                onChange={(e) => handleInputChange('date_embauche', e.target.value)}
+              />
+            </div>
           </div>
 
+          {/* Compétences */}
           <div className="space-y-2">
-            <Label htmlFor="competences">Compétences (séparées par des virgules)</Label>
+            <Label htmlFor="competences">Compétences</Label>
             <Textarea
               id="competences"
               value={formData.competences}
               onChange={(e) => handleInputChange('competences', e.target.value)}
-              placeholder="Ex: Conduite poids lourd, Manutention lourde, Piano"
+              placeholder="Ex: Conduite de camion, manutention lourde, gestion d'équipe..."
               rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="avatar_url">URL de l'Avatar (optionnel)</Label>
-            <Input
-              id="avatar_url"
-              type="url"
-              value={formData.avatar_url}
-              onChange={(e) => handleInputChange('avatar_url', e.target.value)}
-              placeholder="https://exemple.com/avatar.jpg"
             />
           </div>
 

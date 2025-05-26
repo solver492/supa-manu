@@ -1,9 +1,9 @@
 
-import { Badge } from '@/components/ui/badge';
+import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Phone, Mail } from 'lucide-react';
+import { Edit, Trash2, Mail, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -23,21 +23,28 @@ export const employeeTableColumns = (onEdit, onDelete) => [
           </Avatar>
           <div>
             <div className="font-medium">{employee.nom}</div>
-            <div className="text-sm text-muted-foreground">{employee.email}</div>
+            <div className="text-sm text-muted-foreground">{employee.poste}</div>
           </div>
         </div>
       );
     },
   },
   {
-    accessorKey: 'poste',
-    header: 'Poste',
+    accessorKey: 'email',
+    header: 'Contact',
     cell: ({ row }) => {
-      const poste = row.getValue('poste');
+      const employee = row.original;
       return (
-        <Badge variant="outline" className="font-medium">
-          {poste}
-        </Badge>
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <Mail className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm">{employee.email}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Phone className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm">{employee.telephone}</span>
+          </div>
+        </div>
       );
     },
   },
@@ -45,28 +52,12 @@ export const employeeTableColumns = (onEdit, onDelete) => [
     accessorKey: 'equipe',
     header: 'Équipe',
     cell: ({ row }) => {
-      const equipe = row.getValue('equipe');
-      return (
-        <Badge variant="secondary">
-          {equipe}
-        </Badge>
-      );
-    },
-  },
-  {
-    accessorKey: 'telephone',
-    header: 'Contact',
-    cell: ({ row }) => {
       const employee = row.original;
       return (
-        <div className="space-y-1">
-          <div className="flex items-center text-sm">
-            <Phone className="h-3 w-3 mr-1" />
-            {employee.telephone}
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Mail className="h-3 w-3 mr-1" />
-            {employee.email}
+        <div>
+          <div className="font-medium">{employee.equipe}</div>
+          <div className="text-sm text-muted-foreground">
+            {employee.nb_manutentionnaires_equipe} manutentionnaire(s)
           </div>
         </div>
       );
@@ -76,12 +67,25 @@ export const employeeTableColumns = (onEdit, onDelete) => [
     accessorKey: 'disponibilite',
     header: 'Disponibilité',
     cell: ({ row }) => {
-      const disponibilite = row.getValue('disponibilite');
-      const variant = disponibilite === 'Disponible' ? 'default' : 
-                    disponibilite === 'Occupé' ? 'destructive' : 'secondary';
+      const employee = row.original;
+      const getStatusColor = (status) => {
+        switch (status) {
+          case 'Disponible':
+            return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+          case 'Occupé':
+            return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+          case 'En congé':
+            return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+          case 'Arrêt maladie':
+            return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+          default:
+            return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+        }
+      };
+
       return (
-        <Badge variant={variant}>
-          {disponibilite}
+        <Badge variant="secondary" className={getStatusColor(employee.disponibilite)}>
+          {employee.disponibilite}
         </Badge>
       );
     },
@@ -90,31 +94,34 @@ export const employeeTableColumns = (onEdit, onDelete) => [
     accessorKey: 'salaire_journalier',
     header: 'Salaire/jour',
     cell: ({ row }) => {
-      const salaire = row.getValue('salaire_journalier');
-      return salaire ? `${parseFloat(salaire).toFixed(2)} €` : 'Non défini';
+      const employee = row.original;
+      return (
+        <div className="font-medium">
+          {employee.salaire_journalier ? `${parseFloat(employee.salaire_journalier).toFixed(2)} €` : 'N/A'}
+        </div>
+      );
     },
   },
   {
     accessorKey: 'date_embauche',
     header: 'Date d\'embauche',
     cell: ({ row }) => {
-      const date = row.getValue('date_embauche');
-      if (!date) return 'Non définie';
-      try {
-        return format(new Date(date), 'dd/MM/yyyy', { locale: fr });
-      } catch {
-        return 'Date invalide';
-      }
+      const employee = row.original;
+      return employee.date_embauche ? (
+        <div className="text-sm">
+          {format(new Date(employee.date_embauche), 'dd/MM/yyyy', { locale: fr })}
+        </div>
+      ) : 'N/A';
     },
   },
   {
     accessorKey: 'actif',
     header: 'Statut',
     cell: ({ row }) => {
-      const actif = row.getValue('actif');
+      const employee = row.original;
       return (
-        <Badge variant={actif ? 'default' : 'secondary'}>
-          {actif ? 'Actif' : 'Inactif'}
+        <Badge variant={employee.actif ? 'default' : 'secondary'}>
+          {employee.actif ? 'Actif' : 'Inactif'}
         </Badge>
       );
     },
@@ -125,27 +132,24 @@ export const employeeTableColumns = (onEdit, onDelete) => [
     cell: ({ row }) => {
       const employee = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Ouvrir le menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(employee)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Modifier
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => onDelete(employee)}
-              className="text-red-600"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(employee)}
+            className="hover:bg-blue-100 dark:hover:bg-blue-900"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(employee)}
+            className="hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       );
     },
   },
