@@ -40,7 +40,7 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -52,10 +52,10 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
           </DialogTitle>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid gap-3 py-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Informations Client */}
-            <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+            <div className="space-y-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
               <h3 className="font-semibold flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
                 Informations Client
@@ -74,7 +74,7 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
             </div>
 
             {/* Détails de l'Intervention */}
-            <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+            <div className="space-y-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
               <h3 className="font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
                 Détails de l'Intervention
@@ -120,7 +120,7 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
           </div>
 
           {/* Adresse */}
-          <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+          <div className="space-y-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
             <h3 className="font-semibold flex items-center gap-2">
               <MapPin className="h-5 w-5 text-primary" />
               Adresse d'intervention
@@ -131,28 +131,28 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
           </div>
 
           {/* Description et Notes */}
-          <div className="space-y-4">
-            <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+          <div className="space-y-3">
+            <div className="space-y-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
               <h3 className="font-semibold flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
                 Informations détaillées
               </h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
                   <h4 className="text-sm font-medium">Description</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
                     {service.description || "Aucune description"}
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <h4 className="text-sm font-medium">Détails Supplémentaires</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
                     {service.details_prestation || "Aucun détail supplémentaire"}
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <h4 className="text-sm font-medium">Notes</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
                     {service.notes || "Aucune note"}
@@ -163,7 +163,7 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
           </div>
 
           {/* Prix */}
-          <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+          <div className="space-y-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
             <h3 className="font-semibold flex items-center gap-2">
               <Euro className="h-5 w-5 text-primary" />
               Prix de la prestation
