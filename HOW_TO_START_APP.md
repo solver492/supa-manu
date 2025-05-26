@@ -54,6 +54,11 @@ npm run preview
 ### Problèmes courants
 - **Port déjà utilisé** : Changez le port dans vite.config.js
 - **Erreur de permission** : Exécutez `chmod +x node_modules/.bin/vite` sur Linux/Mac
+- **Erreur "infinite recursion detected in policy"** : 
+  1. Connectez-vous à votre tableau de bord Supabase
+  2. Allez dans SQL Editor
+  3. Exécutez le script `fix_rls_policies.sql` fourni dans le projet
+  4. Redémarrez l'application
 - **Erreurs de base de données** : Vérifiez les clés Supabase dans `.env`
 
 ### Support
