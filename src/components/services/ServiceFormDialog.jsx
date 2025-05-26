@@ -30,16 +30,19 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
     type_prestation: serviceTypes[0],
     description: '',
     date_prestation: new Date().toISOString(),
-    time_prestation: '09:00',
-    adresse_depart: '',
-    adresse_arrivee: '',
-    volume_m3: '',
-    statut: serviceStatusOptions[0],
-    prix_estime: '',
-    notes_instructions: '',
-    // equipe_affectee_id: '', // To be added if employee management is fully integrated
-    // vehicule_affecte_id: '', // To be added if vehicle management is fully integrated
-    // nombre_manutentionnaires_requis: '', // To be added
+    statut: 'en_attente',
+    adresse: '',
+    nom_client: '',
+    telephone_client: '',
+    email_client: '',
+    details_prestation: '',
+    prix: '',
+    duree_estimee: 4,
+    nombre_employes: 2,
+    nombre_manutentionnaires: 0,
+
+    vehicules_requis: [],
+    notes: ''
   });
 
   const [clients, setClients] = useState([]);
@@ -70,19 +73,38 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
           description: initialService.description || '',
           date_prestation: serviceDate.toISOString(),
           time_prestation: format(serviceDate, "HH:mm"),
-          adresse_depart: initialService.adresse_depart || '',
-          adresse_arrivee: initialService.adresse_arrivee || '',
-          volume_m3: initialService.volume_m3 || '',
-          statut: initialService.statut || serviceStatusOptions[0],
-          prix_estime: initialService.prix_estime || '',
-          notes_instructions: initialService.notes_instructions || '',
+          statut: initialService.statut || 'en_attente',
+          adresse: initialService.adresse || '',
+          nom_client: initialService.nom_client || '',
+          telephone_client: initialService.telephone_client || '',
+          email_client: initialService.email_client || '',
+          details_prestation: initialService.details_prestation || '',
+          prix: initialService.prix || '',
+          duree_estimee: initialService.duree_estimee || 4,
+          nombre_employes: initialService.nombre_employes || 2,
+          nombre_manutentionnaires: initialService.nombre_manutentionnaires || 0,
+          vehicules_requis: initialService.vehicules_requis || [],
+          notes: initialService.notes || ''
         });
       } else {
         setFormData({
-          client_id: '', type_prestation: serviceTypes[0], description: '',
-          date_prestation: new Date().toISOString(), time_prestation: '09:00',
-          adresse_depart: '', adresse_arrivee: '', volume_m3: '',
-          statut: serviceStatusOptions[0], prix_estime: '', notes_instructions: '',
+          client_id: '',
+          type_prestation: serviceTypes[0],
+          description: '',
+          date_prestation: new Date().toISOString(),
+          time_prestation: '09:00',
+          statut: 'en_attente',
+          adresse: '',
+          nom_client: '',
+          telephone_client: '',
+          email_client: '',
+          details_prestation: '',
+          prix: '',
+          duree_estimee: 4,
+          nombre_employes: 2,
+          nombre_manutentionnaires: 0,
+          vehicules_requis: [],
+          notes: ''
         });
       }
     }
@@ -103,7 +125,7 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     let combinedDateTime = new Date();
     if (formData.date_prestation && isValid(parseISO(formData.date_prestation))) {
@@ -114,13 +136,26 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
     combinedDateTime = setHours(combinedDateTime, parseInt(hours, 10));
     combinedDateTime = setMinutes(combinedDateTime, parseInt(minutes, 10));
     
-    const payload = { 
-      ...formData, 
+    const payload = {
+      client_id: formData.client_id,
+      type_prestation: formData.type_prestation,
+      description: formData.description,
       date_prestation: combinedDateTime.toISOString(),
-      volume_m3: formData.volume_m3 ? parseFloat(formData.volume_m3) : null,
-      prix_estime: formData.prix_estime ? parseFloat(formData.prix_estime) : null,
+      statut: formData.statut,
+      adresse: formData.adresse,
+      nom_client: formData.nom_client,
+      telephone_client: formData.telephone_client,
+      email_client: formData.email_client,
+      details_prestation: formData.details_prestation,
+      prix: formData.prix ? parseFloat(formData.prix) : null,
+      duree_estimee: formData.duree_estimee ? parseInt(formData.duree_estimee) : null,
+      nombre_employes: formData.nombre_employes ? parseInt(formData.nombre_employes) : null,
+      nombre_manutentionnaires: formData.nombre_manutentionnaires ? parseInt(formData.nombre_manutentionnaires) : null,
+  
+      vehicules_requis: formData.vehicules_requis,
+      notes: formData.notes
     };
-    delete payload.time_prestation; // Not a DB field
+    
     onSubmit(payload);
   };
 
@@ -134,8 +169,8 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto p-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 py-4">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="client_id">Client *</Label>
               <Select name="client_id" value={formData.client_id} onValueChange={(value) => handleSelectChange('client_id', value)} required>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
@@ -144,6 +179,41 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nom_client">Nom du Client</Label>
+              <Input
+                id="nom_client"
+                name="nom_client"
+                value={formData.nom_client}
+                onChange={handleChange}
+                placeholder="Nom du client"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="telephone_client">Téléphone</Label>
+              <Input
+                id="telephone_client"
+                name="telephone_client"
+                value={formData.telephone_client}
+                onChange={handleChange}
+                placeholder="Numéro de téléphone"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email_client">Email</Label>
+              <Input
+                id="email_client"
+                name="email_client"
+                type="email"
+                value={formData.email_client}
+                onChange={handleChange}
+                placeholder="Email du client"
+              />
+            </div>
+
             <div>
               <Label htmlFor="type_prestation">Type de Prestation *</Label>
               <Select name="type_prestation" value={formData.type_prestation} onValueChange={(value) => handleSelectChange('type_prestation', value)} required>
@@ -153,10 +223,16 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="md:col-span-2">
+
+            <div className="space-y-2">
               <Label htmlFor="description">Description de la prestation</Label>
-              <Textarea id="description" name="description" value={formData.description} onChange={handleChange} placeholder="Ex: Déménagement appartement T3, 2ème étage sans ascenseur..." />
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Ex: Déménagement appartement T3, 2ème étage sans ascenseur..."
+              />
             </div>
 
             <div>
@@ -173,29 +249,73 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
                 </PopoverContent>
               </Popover>
             </div>
+
             <div>
               <Label htmlFor="time_prestation">Heure de Début *</Label>
               <Input id="time_prestation" name="time_prestation" type="time" value={formData.time_prestation} onChange={handleChange} required />
             </div>
 
-            <div>
-              <Label htmlFor="adresse_depart">Adresse de Départ *</Label>
-              <Input id="adresse_depart" name="adresse_depart" value={formData.adresse_depart} onChange={handleChange} required placeholder="Ex: 1 Rue de la Paix, 75002 Paris"/>
-            </div>
-            <div>
-              <Label htmlFor="adresse_arrivee">Adresse d'Arrivée *</Label>
-              <Input id="adresse_arrivee" name="adresse_arrivee" value={formData.adresse_arrivee} onChange={handleChange} required placeholder="Ex: 15 Av. des Champs-Élysées, 75008 Paris"/>
+            <div className="space-y-2">
+              <Label htmlFor="adresse">Adresse</Label>
+              <Input
+                id="adresse"
+                name="adresse"
+                value={formData.adresse}
+                onChange={handleChange}
+                placeholder="Adresse complète"
+              />
             </div>
 
-            <div>
-              <Label htmlFor="volume_m3"><Box className="inline-block mr-2 h-4 w-4 text-primary" />Volume Estimé (m³)</Label>
-              <Input id="volume_m3" name="volume_m3" type="number" step="0.1" value={formData.volume_m3} onChange={handleChange} placeholder="Ex: 30"/>
+            <div className="space-y-2">
+              <Label htmlFor="duree_estimee">Durée Estimée (heures)</Label>
+              <Input
+                id="duree_estimee"
+                name="duree_estimee"
+                type="number"
+                value={formData.duree_estimee}
+                onChange={handleChange}
+                min="1"
+              />
             </div>
-            <div>
-              <Label htmlFor="prix_estime"><DollarSign className="inline-block mr-2 h-4 w-4 text-primary" />Prix Estimé (€)</Label>
-              <Input id="prix_estime" name="prix_estime" type="number" step="0.01" value={formData.prix_estime} onChange={handleChange} placeholder="Ex: 1200.50"/>
+
+
+            <div className="space-y-2">
+              <Label htmlFor="nombre_employes"><Users className="inline-block mr-2 h-4 w-4 text-primary" />Nombre d'employés requis</Label>
+              <Input
+                id="nombre_employes"
+                name="nombre_employes"
+                type="number"
+                value={formData.nombre_employes}
+                onChange={handleChange}
+                min="1"
+              />
             </div>
-            
+
+            <div className="space-y-2">
+              <Label htmlFor="nombre_manutentionnaires"><Users className="inline-block mr-2 h-4 w-4 text-primary" />Nombre de manutentionnaires</Label>
+              <Input
+                id="nombre_manutentionnaires"
+                name="nombre_manutentionnaires"
+                type="number"
+                value={formData.nombre_manutentionnaires}
+                onChange={handleChange}
+                min="0"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="prix">Prix (€)</Label>
+              <Input
+                id="prix"
+                name="prix"
+                type="number"
+                value={formData.prix}
+                onChange={handleChange}
+                min="0"
+                step="10"
+              />
+            </div>
+
             <div>
               <Label htmlFor="statut">Statut *</Label>
               <Select name="statut" value={formData.statut} onValueChange={(value) => handleSelectChange('statut', value)} required>
@@ -206,25 +326,32 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
               </Select>
             </div>
 
-            {/* Placeholder for team, vehicle, movers - to be implemented with respective modules */}
-            {/* 
-            <div>
-              <Label htmlFor="equipe_affectee_id">Chef d'Équipe</Label>
-              <Select name="equipe_affectee_id" value={formData.equipe_affectee_id} onValueChange={(value) => handleSelectChange('equipe_affectee_id', value)}>
-                <SelectTrigger><SelectValue placeholder="Assigner une équipe" /></SelectTrigger>
-                <SelectContent>{employees.map(emp => <SelectItem key={emp.id} value={emp.id}>{emp.nom} {emp.prenom}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="details_prestation">Détails Supplémentaires</Label>
+              <Textarea
+                id="details_prestation"
+                name="details_prestation"
+                value={formData.details_prestation}
+                onChange={handleChange}
+                placeholder="Détails supplémentaires sur la prestation..."
+              />
             </div>
-            */}
 
-            <div className="md:col-span-2">
-              <Label htmlFor="notes_instructions">Notes / Instructions Spécifiques</Label>
-              <Textarea id="notes_instructions" name="notes_instructions" value={formData.notes_instructions} onChange={handleChange} placeholder="Ex: Objets fragiles à manipuler avec soin, accès difficile, contacter M. Dupont à l'arrivée..." />
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                placeholder="Notes internes..."
+              />
             </div>
           </div>
-          <DialogFooter className="pt-4 border-t">
+
+          <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
-            <Button type="submit" className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-primary-foreground">{initialService ? "Sauvegarder les Modifications" : "Planifier la Prestation"}</Button>
+            <Button type="submit">{initialService ? "Mettre à jour" : "Créer"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

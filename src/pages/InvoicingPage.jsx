@@ -43,24 +43,38 @@ const InvoicingPage = () => {
   });
 
   const fetchInvoices = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('factures')
-      .select('*, clients(id, nom, adresse, email), prestations(id, type_prestation)')
-      .order('created_at', { ascending: false });
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('factures')
+        .select('*, clients(id, nom, adresse, email), prestations(id, type_prestation)')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error("Error fetching invoices:", error);
-      toast({ title: "Erreur", description: "Impossible de charger les factures.", variant: "destructive" });
-      setInvoices([]);
-    } else {
-       const formattedInvoices = data.map(inv => ({
+      if (error) {
+        console.error("Erreur lors de la récupération des factures:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les factures",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formattedInvoices = data.map(inv => ({
         ...inv,
         clientNom: inv.clients?.nom || 'Client Inconnu',
       }));
       setInvoices(formattedInvoices);
+    } catch (error) {
+      console.error("Erreur:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [toast]);
 
   useEffect(() => {
@@ -89,24 +103,37 @@ const InvoicingPage = () => {
 
   const confirmDelete = async () => {
     if (!invoiceToDelete) return;
-    const { error } = await supabase
-      .from('factures')
-      .delete()
-      .eq('id', invoiceToDelete.id);
+    try {
+      const { error } = await supabase
+        .from('factures')
+        .delete()
+        .eq('id', invoiceToDelete.id);
 
-    if (error) {
-      toast({ title: "Erreur de suppression", description: `Impossible de supprimer la facture ${invoiceToDelete.numero_facture || invoiceToDelete.id}: ${error.message}`, variant: "destructive" });
-    } else {
-      toast({ title: "Facture supprimée", description: `La facture ${invoiceToDelete.numero_facture || invoiceToDelete.id} a été supprimée.` });
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Facture supprimée avec succès",
+      });
+
       fetchInvoices();
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la facture",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setInvoiceToDelete(null);
     }
-    setIsDeleteDialogOpen(false);
-    setInvoiceToDelete(null);
   };
 
   const handleSubmitForm = async (invoiceData) => {
-    let result;
-    const payload = {
+    try {
+      let result;
+      const payload = {
         numero_facture: invoiceData.numero_facture,
         client_id: invoiceData.client_id,
         prestation_id: invoiceData.prestation_id || null,
@@ -116,25 +143,61 @@ const InvoicingPage = () => {
         taux_tva: invoiceData.taux_tva,
         statut: invoiceData.statut,
         notes: invoiceData.notes || null,
-    };
+      };
 
-    if (currentInvoice && currentInvoice.id) {
-      payload.updated_at = new Date().toISOString();
-      result = await supabase.from('factures').update(payload).eq('id', currentInvoice.id).select('*, clients(nom)');
-    } else {
-      result = await supabase.from('factures').insert([payload]).select('*, clients(nom)');
-    }
-    
-    const { data, error } = result;
+      // Vérification de l'ID pour la mise à jour
+      const isUpdate = Boolean(invoiceData.id);
+      
+      if (isUpdate) {
+        const invoiceId = invoiceData.id.trim();
+        if (!invoiceId) {
+          throw new Error("ID de facture manquant ou invalide");
+        }
 
-    if (error) {
-      toast({ title: "Erreur d'enregistrement", description: `Impossible de sauvegarder la facture: ${error.message}`, variant: "destructive" });
-    } else {
-      toast({ title: currentInvoice ? "Facture modifiée" : "Facture créée", description: `La facture ${data[0].numero_facture} a été sauvegardée.` });
+        payload.updated_at = new Date().toISOString();
+        
+        // Mise à jour avec l'ID vérifié
+        result = await supabase
+          .from('factures')
+          .update(payload)
+          .eq('id', invoiceId)
+          .select('*, clients(nom)');
+      } else {
+        // Création d'une nouvelle facture
+        result = await supabase
+          .from('factures')
+          .insert([payload])
+          .select('*, clients(nom)');
+      }
+      
+      const { data, error } = result;
+
+      if (error) {
+        console.error("Erreur Supabase:", error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("Aucune donnée retournée après l'opération");
+      }
+
+      toast({
+        title: isUpdate ? "Facture modifiée" : "Facture créée",
+        description: `La facture ${data[0].numero_facture} a été ${isUpdate ? 'modifiée' : 'créée'} avec succès`,
+      });
+
       fetchInvoices();
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de sauvegarder la facture",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFormDialogOpen(false);
+      setCurrentInvoice(null);
     }
-    setIsFormDialogOpen(false);
-    setCurrentInvoice(null);
   };
   
   const columns = useMemo(() => [
@@ -154,7 +217,7 @@ const InvoicingPage = () => {
     { 
       accessorKey: "montant_ttc", 
       header: ({ column }) => <DataTableColumnHeader column={column} title="Montant TTC" />, 
-      cell: ({ row }) => `${Number(row.original.montant_ttc || 0).toFixed(2)} €`
+      cell: ({ row }) => `${Number(row.original.taux_tva * row.original.montant_ht + row.original.montant_ht).toFixed(2)} €`
     },
     { accessorKey: "statut", header: ({ column }) => <DataTableColumnHeader column={column} title="Statut" />,
       cell: ({ row }) => {

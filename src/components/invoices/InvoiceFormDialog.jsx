@@ -21,9 +21,9 @@ import { supabase } from '@/lib/supabaseClient'; // Import supabase
 export const invoiceStatusOptions = ["Payée", "En attente", "En retard", "Partiellement payée", "Annulée"];
 export const TVA_RATE = 0.20; // 20%
 
-
 const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
   const [formData, setFormData] = useState({
+    id: '',
     client_id: '',
     prestation_id: '',
     date_emission: new Date().toISOString(),
@@ -36,7 +36,6 @@ const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
 
   const [clients, setClients] = useState([]);
   const [prestations, setPrestations] = useState([]);
-
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -57,8 +56,9 @@ const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
 
     if (isOpen) {
       fetchDropdownData();
-      if (invoice) {
+      if (invoice && invoice.id) {
         setFormData({
+          id: invoice.id || '',
           client_id: invoice.client_id || '',
           prestation_id: invoice.prestation_id || '',
           date_emission: invoice.date_emission ? invoice.date_emission : new Date().toISOString(),
@@ -69,8 +69,17 @@ const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
           taux_tva: invoice.taux_tva || TVA_RATE,
         });
       } else {
+        // Réinitialiser le formulaire pour une nouvelle facture
         setFormData({
-          client_id: '', prestation_id: '', date_emission: new Date().toISOString(), date_echeance: '', montant_ht: 0, statut: invoiceStatusOptions[1], numero_facture: '', taux_tva: TVA_RATE
+          id: '', // S'assurer que l'ID est vide pour une nouvelle facture
+          client_id: '',
+          prestation_id: '',
+          date_emission: new Date().toISOString(),
+          date_echeance: '',
+          montant_ht: 0,
+          statut: invoiceStatusOptions[1],
+          numero_facture: '',
+          taux_tva: TVA_RATE
         });
       }
     }
@@ -89,26 +98,29 @@ const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
     setFormData(prev => ({ ...prev, [name]: date ? date.toISOString().split('T')[0] : '' })); // Store as YYYY-MM-DD
   };
 
-  // TVA and TTC are now generated columns in Supabase, so we don't need to calculate them here for the payload
-  // but we can display them for user feedback
-  const displayTVA = parseFloat(formData.montant_ht || 0) * parseFloat(formData.taux_tva || TVA_RATE);
-  const displayTTC = parseFloat(formData.montant_ht || 0) + displayTVA;
-
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const payload = {
       ...formData,
       montant_ht: parseFloat(formData.montant_ht),
       taux_tva: parseFloat(formData.taux_tva),
-      // Supabase will auto-generate numero_facture if not provided and set up with default or trigger
-      // For now, we require it to be manually entered or pre-filled.
     };
-     if (!payload.numero_facture && !invoice) { // Only auto-generate for new invoices if not provided
-        payload.numero_facture = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`; // Simple unique ID
+
+    // Générer un numéro de facture si c'est une nouvelle facture
+    if (!payload.numero_facture && !invoice) {
+      payload.numero_facture = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
     }
+
+    // Ne pas inclure l'ID si c'est une nouvelle facture
+    if (!invoice || !invoice.id) {
+      delete payload.id;
+    }
+
     onSubmit(payload);
   };
+
+  const displayTVA = parseFloat(formData.montant_ht || 0) * parseFloat(formData.taux_tva || TVA_RATE);
+  const displayTTC = parseFloat(formData.montant_ht || 0) + displayTVA;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -125,7 +137,7 @@ const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
               <Label htmlFor="numero_facture">Numéro de Facture</Label>
               <Input id="numero_facture" name="numero_facture" value={formData.numero_facture} onChange={handleChange} required placeholder={invoice ? "" : "Ex: INV-2025-0001"}/>
             </div>
-             <div>
+            <div>
               <Label htmlFor="client_id">Client</Label>
               <Select name="client_id" value={formData.client_id} onValueChange={(value) => handleSelectChange('client_id', value)} required>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
@@ -175,7 +187,7 @@ const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
               <Label htmlFor="montant_ht">Montant HT (€)</Label>
               <Input id="montant_ht" name="montant_ht" type="number" step="0.01" value={formData.montant_ht} onChange={handleChange} required />
             </div>
-             <div>
+            <div>
               <Label htmlFor="taux_tva">Taux TVA (ex: 0.20 pour 20%)</Label>
               <Input id="taux_tva" name="taux_tva" type="number" step="0.01" value={formData.taux_tva} onChange={handleChange} required />
             </div>

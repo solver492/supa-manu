@@ -126,11 +126,11 @@ const InvoiceViewDialog = ({ isOpen, onClose, invoice, onPrint, printRef }) => {
             </tr>
             <tr className="total">
               <td colSpan="2"></td>
-              <td style={{textAlign: 'right'}}>TVA ({Number(invoice.taux_tva || 0) * 100}%): {Number(invoice.montant_tva || 0).toFixed(2)} €</td>
+              <td style={{textAlign: 'right'}}>TVA {(invoice.taux_tva*invoice.montant_ht).toFixed(2)} €</td>
             </tr>
             <tr className="total">
               <td colSpan="2"></td>
-              <td style={{textAlign: 'right'}}><strong>Total TTC: {Number(invoice.montant_ttc || 0).toFixed(2)} €</strong></td>
+              <td style={{textAlign: 'right'}}><strong>Total TTC: {((1+invoice.taux_tva)*invoice.montant_ht).toFixed(2)} €</strong></td>
             </tr>
           </table>
           {invoice.notes && (

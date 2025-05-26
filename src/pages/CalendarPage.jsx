@@ -8,6 +8,7 @@ import { PlusCircle, Printer } from 'lucide-react';
 import CalendarView from '@/components/calendar/CalendarView';
 import EventList from '@/components/calendar/EventList';
 import EventFormDialog from '@/components/calendar/EventFormDialog';
+import { supabase } from '@/lib/supabaseClient';
 
 export const eventTypes = [
   { value: "Prestation", label: "Prestation", color: "bg-blue-500" },
@@ -24,25 +25,46 @@ const CalendarPage = () => {
   const [currentEvent, setCurrentEvent] = useState(null);
   const { toast } = useToast();
 
-  const loadCalendarData = useCallback(() => {
-    const storedServices = JSON.parse(localStorage.getItem('services') || '[]');
-    const serviceEvents = storedServices.map(service => ({
-      id: `serv-${service.id}`,
-      title: `${service.type} - ${service.client}`,
-      date: service.date, // Assumes service.date is ISO string
-      type: "Prestation",
-      color: eventTypes.find(et => et.value === "Prestation")?.color || "bg-blue-500",
-      originalData: service,
-    }));
+  const loadCalendarData = useCallback(async () => {
+    try {
+      // Charger les prestations depuis Supabase
+      const { data: prestationsData, error: prestationsError } = await supabase
+        .from('prestations')
+        .select('*, clients(nom)')
+        .order('date_prestation', { ascending: true });
 
-    const storedCustomEvents = JSON.parse(localStorage.getItem('calendarCustomEvents') || '[]');
-    const allEvents = [...serviceEvents, ...storedCustomEvents];
-    setEvents(allEvents);
-  }, []);
+      if (prestationsError) throw prestationsError;
+
+      // Convertir les prestations en événements du calendrier
+      const prestationEvents = prestationsData.map(prestation => ({
+        id: prestation.id,
+        title: `${prestation.type_prestation} - ${prestation.clients?.nom || 'Client non spécifié'}`,
+        date: prestation.date_prestation,
+        type: "Prestation",
+        color: eventTypes.find(et => et.value === "Prestation")?.color || "bg-blue-500",
+        originalData: prestation,
+      }));
+
+      // Charger les événements personnalisés depuis le localStorage
+      const storedCustomEvents = JSON.parse(localStorage.getItem('calendarCustomEvents') || '[]');
+      
+      // Combiner les prestations et les événements personnalisés
+      const allEvents = [...prestationEvents, ...storedCustomEvents];
+      setEvents(allEvents);
+
+    } catch (error) {
+      console.error("Erreur lors du chargement des données du calendrier:", error);
+      toast({ 
+        title: "Erreur de chargement", 
+        description: "Impossible de charger les prestations.", 
+        variant: "destructive" 
+      });
+    }
+  }, [toast]);
 
   useEffect(() => {
     loadCalendarData();
-    const intervalId = setInterval(loadCalendarData, 5000); // Refresh every 5 seconds
+    const intervalId = setInterval(loadCalendarData, 5000); // Rafraîchir toutes les 5 secondes
     return () => clearInterval(intervalId);
   }, [loadCalendarData]);
 
@@ -62,8 +84,12 @@ const CalendarPage = () => {
   };
 
   const handleEditEvent = (event) => {
-    if (event.id.startsWith('serv-')) {
-      toast({ title: "Modification non autorisée", description: "Les prestations doivent être modifiées depuis le module Prestations.", variant: "destructive" });
+    if (!event.id.startsWith('cust-')) {
+      toast({ 
+        title: "Modification non autorisée", 
+        description: "Les prestations doivent être modifiées depuis le module Prestations.", 
+        variant: "destructive" 
+      });
       return;
     }
     setSelectedDate(parseISO(event.date));
@@ -72,8 +98,12 @@ const CalendarPage = () => {
   };
   
   const handleDeleteEvent = (eventId) => {
-    if (eventId.startsWith('serv-')) {
-      toast({ title: "Suppression non autorisée", description: "Les prestations doivent être supprimées depuis le module Prestations.", variant: "destructive" });
+    if (!eventId.startsWith('cust-')) {
+      toast({ 
+        title: "Suppression non autorisée", 
+        description: "Les prestations doivent être supprimées depuis le module Prestations.", 
+        variant: "destructive" 
+      });
       return;
     }
     const customEvents = JSON.parse(localStorage.getItem('calendarCustomEvents') || '[]');
@@ -100,43 +130,184 @@ const CalendarPage = () => {
   };
   
   const handlePrintCalendar = () => {
-    const printWindow = window.open('', '_blank');
     const calendarElement = document.getElementById('calendar-to-print');
-    if (calendarElement) {
-      const headerContent = `
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1>Planning de ${format(currentMonth, "MMMM yyyy", { locale: fr })}</h1>
-          <p>Imprimé le: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr })}</p>
+    if (!calendarElement) {
+      toast({
+        title: "Erreur d'impression",
+        description: "Impossible de trouver le contenu du calendrier à imprimer.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Créer la fenêtre d'impression
+    const printWindow = window.open('', '', 'width=1000,height=600');
+    printWindow.document.open();
+
+    // Récupérer les événements
+    const events = Array.from(calendarElement.querySelectorAll('.print-calendar-event')).map(event => {
+      const dayEl = event.closest('.print-calendar-day');
+      return {
+        date: dayEl.querySelector('.print-calendar-day-number').textContent,
+        title: event.textContent,
+        color: Array.from(event.classList).find(c => c.startsWith('bg-')) || ''
+      };
+    }).sort((a, b) => parseInt(a.date) - parseInt(b.date));
+
+    // Styles pour l'impression
+    const styles = `
+      @page { size: landscape; margin: 1cm; }
+      * { box-sizing: border-box; }
+      body { 
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 15px;
+        background: white;
+      }
+      .page {
+        page-break-after: always;
+        padding: 15px;
+      }
+      .page:last-child {
+        page-break-after: avoid;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .header h1 {
+        font-size: 24px;
+        margin: 0 0 5px 0;
+      }
+      .header p {
+        color: #666;
+        margin: 0;
+      }
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 1px;
+        background: #ddd;
+        border: 1px solid #ccc;
+        margin-bottom: 20px;
+      }
+      .calendar-day {
+        background: white;
+        padding: 8px;
+        min-height: 100px;
+      }
+      .day-header {
+        display: flex;
+        justify-content: space-between;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 5px;
+      }
+      .day-name {
+        font-size: 12px;
+        color: #666;
+      }
+      .day-number {
+        font-weight: bold;
+      }
+      .event {
+        margin: 3px 0;
+        padding: 4px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        color: white;
+      }
+      .events-page {
+        padding: 20px;
+      }
+      .events-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+      }
+      .event-card {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 12px;
+      }
+      .event-date {
+        color: #666;
+        margin-bottom: 5px;
+      }
+      .bg-blue-500 { background-color: #3b82f6 !important; }
+      .bg-yellow-500 { background-color: #eab308 !important; }
+      .bg-green-500 { background-color: #22c55e !important; }
+      .bg-purple-500 { background-color: #a855f7 !important; }
+    `;
+
+    const weekDays = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const days = Array.from(calendarElement.querySelectorAll('.print-calendar-day'));
+    
+    const calendarContent = days.map((day, idx) => {
+      const dayNumber = day.querySelector('.print-calendar-day-number').textContent;
+      const events = Array.from(day.querySelectorAll('.print-calendar-event')).map(event => {
+        const className = Array.from(event.classList).find(c => c.startsWith('bg-'));
+        return `<div class="event ${className}">${event.textContent}</div>`;
+      }).join('');
+
+      return `
+        <div class="calendar-day${day.classList.contains('outside-month') ? ' outside-month' : ''}">
+          <div class="day-header">
+            <span class="day-name">${weekDays[idx % 7]}</span>
+            <span class="day-number">${dayNumber}</span>
+          </div>
+          ${events}
         </div>
       `;
-      const styles = `
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .print-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid #ccc; }
-        .print-calendar-header { text-align: center; font-weight: bold; padding: 8px; border-bottom: 1px solid #ccc; background-color: #f0f0f0; }
-        .print-calendar-day { border: 1px solid #eee; padding: 5px; min-height: 100px; position: relative; }
-        .print-calendar-day-number { font-weight: bold; margin-bottom: 5px; }
-        .print-calendar-day.outside-month { background-color: #f9f9f9; color: #aaa; }
-        .print-calendar-event { font-size: 0.8em; padding: 2px 4px; margin-bottom: 2px; border-radius: 3px; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .bg-blue-500 { background-color: #3b82f6 !important; }
-        .bg-yellow-500 { background-color: #eab308 !important; }
-        .bg-green-500 { background-color: #22c55e !important; }
-        .bg-purple-500 { background-color: #a855f7 !important; }
-        @media print {
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print-calendar-event { color: white !important; } /* Ensure text color on backgrounds */
-        }
-      `;
-      printWindow.document.write('<html><head><title>Calendrier Imprimable</title>');
-      printWindow.document.write(`<style>${styles}</style>`);
-      printWindow.document.write('</head><body>');
-      printWindow.document.write(headerContent);
-      printWindow.document.write(calendarElement.innerHTML);
-      printWindow.document.write('<script>setTimeout(() => { window.print(); window.close(); }, 500);</script>');
-      printWindow.document.write('</body></html>');
-      printWindow.document.close();
-    } else {
-      toast({title: "Erreur d'impression", description: "Impossible de trouver le contenu du calendrier à imprimer.", variant: "destructive"});
-    }
+    }).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Calendrier - ${format(currentMonth, "MMMM yyyy", { locale: fr })}</title>
+          <style>${styles}</style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="header">
+              <h1>Planning de ${format(currentMonth, "MMMM yyyy", { locale: fr })}</h1>
+              <p>Imprimé le ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr })}</p>
+            </div>
+            <div class="calendar-grid">
+              ${calendarContent}
+            </div>
+          </div>
+          <div class="page events-page">
+            <div class="header">
+              <h1>Liste des événements - ${format(currentMonth, "MMMM yyyy", { locale: fr })}</h1>
+              <p>${events.length} événement${events.length > 1 ? 's' : ''}</p>
+            </div>
+            <div class="events-list">
+              ${events.map(event => `
+                <div class="event-card">
+                  <div class="event-date">Jour ${event.date}</div>
+                  <div class="event ${event.color}">${event.title}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    // Attendre que tout soit chargé
+    const checkReadyState = setInterval(() => {
+      if (printWindow.document.readyState === 'complete') {
+        clearInterval(checkReadyState);
+        printWindow.focus();
+        printWindow.print();
+      }
+    }, 250);
   };
 
 

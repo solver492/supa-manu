@@ -9,6 +9,27 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [sessionData, setSessionData] = useState(null);
 
+  // Gérer les changements de session
+  useEffect(() => {
+    // Récupérer la session initiale
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessionData(session);
+      setUser(session?.user ?? null);
+      setIsAuthenticated(!!session);
+      setLoading(false);
+    });
+
+    // Écouter les changements de session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessionData(session);
+      setUser(session?.user ?? null);
+      setIsAuthenticated(!!session);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const fetchUserProfile = useCallback(async (authUser) => {
     if (!authUser) return null;
     
@@ -56,80 +77,25 @@ export const AuthProvider = ({ children }) => {
     return baseProfile;
   }, []);
 
-
-  useEffect(() => {
-    const getSession = async () => {
-      setLoading(true);
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error getting session:", error);
-        setUser(null);
-        setIsAuthenticated(false);
-        setLoading(false);
-        return;
-      }
-      
-      setSessionData(session);
-      if (session?.user) {
-        const fullUser = await fetchUserProfile(session.user);
-        setUser(fullUser);
-        setIsAuthenticated(true);
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setLoading(true);
-        setSessionData(session);
-        if (session?.user) {
-          const fullUser = await fetchUserProfile(session.user);
-          setUser(fullUser);
-          setIsAuthenticated(true);
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
-  }, [fetchUserProfile]);
-
   const login = async (identifier, password) => {
-    let emailToLogin = identifier;
-    if (identifier.toLowerCase() === 'genesis') {
-      emailToLogin = 'genesis@example.com';
-    } else if (identifier.toLowerCase() === 'user') {
-      emailToLogin = 'user@example.com';
-    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: identifier,
+        password: password,
+      });
 
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({
-      email: emailToLogin,
-      password,
-    });
+      if (error) throw error;
 
-    if (error) {
+      const user = await fetchUserProfile(data.user);
+      setUser(user);
+      setIsAuthenticated(true);
+      setSessionData(data.session);
+
+      return { success: true, user };
+    } catch (error) {
       console.error('Error logging in:', error.message);
       return { success: false, error: error.message };
     }
-
-    if (signInData.user) {
-      const fullUser = await fetchUserProfile(signInData.user);
-      setUser(fullUser);
-      setIsAuthenticated(true);
-      return { success: true, error: null, user: fullUser };
-    }
-    
-    return { success: false, error: 'Login failed, user data not found after sign in.' };
   };
 
   const logout = async () => {
@@ -154,18 +120,18 @@ export const AuthProvider = ({ children }) => {
   };
   
   const value = {
-    user,
-    isAuthenticated,
+    user, 
+    isAuthenticated, 
+    loading, 
+    sessionData,
     login,
     logout,
-    updatePassword,
-    loading,
-    sessionData,
+    updatePassword
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

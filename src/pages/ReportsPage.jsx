@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { BarChart, LineChart, PieChart, Users, Truck, DollarSign, TrendingUp, Download, Settings2, Printer } from 'lucide-react';
+import { BarChart as BarChartIcon, LineChart as LineChartIcon, PieChart as PieChartIcon, Users, Truck, DollarSign, TrendingUp, Download, Settings2, Printer } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   Select,
@@ -16,14 +16,69 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subMonths, subYears, startOfYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/lib/supabaseClient';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
-const ReportCard = ({ title, value, icon, description, chartType }) => {
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+const ReportCard = ({ title, value, icon, description, chartType, data }) => {
   let ChartIcon;
+  let ChartComponent;
+
   switch (chartType) {
-    case 'bar': ChartIcon = BarChart; break;
-    case 'line': ChartIcon = LineChart; break;
-    case 'pie': ChartIcon = PieChart; break;
-    default: ChartIcon = TrendingUp;
+    case 'bar':
+      ChartIcon = BarChartIcon;
+      ChartComponent = (
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="value" fill="#8884d8" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+      break;
+    case 'line':
+      ChartIcon = LineChartIcon;
+      ChartComponent = (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="value" stroke="#8884d8" />
+          </LineChart>
+        </ResponsiveContainer>
+      );
+      break;
+    case 'pie':
+      ChartIcon = PieChartIcon;
+      ChartComponent = (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              outerRadius={60}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+      break;
+    default:
+      ChartIcon = TrendingUp;
+      ChartComponent = null;
   }
 
   return (
@@ -40,11 +95,13 @@ const ReportCard = ({ title, value, icon, description, chartType }) => {
         <CardContent>
           <div className="text-2xl font-bold text-foreground">{value}</div>
           <p className="text-xs text-muted-foreground">{description}</p>
-          <div className="mt-4 h-32 bg-muted/50 dark:bg-muted/20 rounded-md flex items-center justify-center">
-            <ChartIcon className="h-16 w-16 text-primary/30" />
-            {/* Placeholder for actual chart library integration later */}
+          <div className="mt-4 h-32">
+            {data && data.length > 0 ? ChartComponent : (
+              <div className="h-full bg-muted/50 dark:bg-muted/20 rounded-md flex items-center justify-center">
+                <ChartIcon className="h-16 w-16 text-primary/30" />
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-2 text-center">Graphique de {title.toLowerCase()}</p>
         </CardContent>
       </Card>
     </motion.div>
@@ -55,7 +112,6 @@ const reportTypes = [
   { value: "financial_summary", label: "Résumé Financier" },
   { value: "operational_efficiency", label: "Efficacité Opérationnelle" },
   { value: "customer_insights", label: "Aperçu Clientèle" },
-  { value: "employee_performance", label: "Performance Employés" },
   { value: "vehicle_utilization", label: "Utilisation Véhicules" },
 ];
 
@@ -70,9 +126,6 @@ const dataPointsOptions = {
   ],
   customer_insights: [
     { id: "total_customers", label: "Nombre Total de Clients" }, { id: "new_customers_period", label: "Nouveaux Clients (Période)" },
-  ],
-   employee_performance: [
-    { id: "total_employees", label: "Nombre Total d'Employés" }, { id: "jobs_per_employee_avg", label: "Moy. Prestations par Employé (Simulée)" },
   ],
   vehicle_utilization: [
     { id: "total_vehicles", label: "Nombre Total de Véhicules" }, {id: "vehicle_status_distribution", label: "Répartition Statuts Véhicules"}
@@ -96,10 +149,30 @@ const ReportsPage = () => {
   const { toast } = useToast();
   
   const [reportData, setReportData] = useState({
-    financial: { title: "Chiffre d'Affaires (Payé)", value: "0 €", icon: <DollarSign />, description: "Chargement...", chartType: 'line' },
-    operational: { title: "Prestations Terminées", value: "0", icon: <Truck />, description: "Chargement...", chartType: 'bar' },
-    customer: { title: "Total Clients", value: "0", icon: <Users />, description: "Chargement...", chartType: 'pie' },
-    employee: { title: "Total Employés Actifs", value: "0", icon: <Users />, description: "Chargement...", chartType: 'line' },
+    financial: { 
+      title: "Chiffre d'Affaires (Payé)", 
+      value: "0 €", 
+      icon: <DollarSign />, 
+      description: "Chargement...", 
+      chartType: 'line',
+      data: []
+    },
+    operational: { 
+      title: "Prestations Terminées", 
+      value: "0", 
+      icon: <Truck />, 
+      description: "Chargement...", 
+      chartType: 'bar',
+      data: []
+    },
+    customer: { 
+      title: "Total Clients", 
+      value: "0", 
+      icon: <Users />, 
+      description: "Chargement...", 
+      chartType: 'line',
+      data: []
+    }
   });
 
   const [generatedReportDetails, setGeneratedReportDetails] = useState(null);
@@ -114,52 +187,105 @@ const ReportsPage = () => {
         case 'last7days': startDate = subDays(now, 7); break;
         case 'last30days': startDate = subDays(now, 30); break;
         case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
-        case 'lastQuarter': startDate = subDays(now, 90); break; // Approx. 3 months
+        case 'lastQuarter': startDate = subDays(now, 90); break;
         case 'currentYear': startDate = startOfYear(now); break;
-        case 'allTime': startDate = new Date(2000,0,1); break; // Far past date
+        case 'allTime': startDate = new Date(2000,0,1); break;
         default: startDate = subDays(now, 30);
     }
 
     try {
-        // Financial Data
-        const { data: invoicesData, error: invoicesError } = await supabase.from('factures')
-            .select('montant_ttc, statut, date_emission')
-            .gte('date_emission', startDate.toISOString().split('T')[0])
-            .lte('date_emission', endDate.toISOString().split('T')[0]);
-        if (invoicesError) throw invoicesError;
-        const totalRevenue = invoicesData.filter(inv => inv.statut === 'Payée').reduce((sum, inv) => sum + (inv.montant_ttc || 0), 0);
-        
-        // Operational Data
-        const { data: servicesData, error: servicesError } = await supabase.from('prestations')
-            .select('statut, date_prestation')
+        // 1. Chiffre d'Affaires (Payé)
+        const { data: invoicesData, error: invoicesError } = await supabase
+            .from('factures')
+            .select('montant_ttc, statut')
+            .eq('statut', 'Payée')
+            .gte('date_emission', startDate.toISOString())
+            .lte('date_emission', endDate.toISOString());
+            
+        if (invoicesError) {
+            console.error("Erreur factures:", invoicesError);
+            throw invoicesError;
+        }
+
+        const totalRevenue = invoicesData?.reduce((sum, inv) => {
+            const amount = typeof inv.montant_ttc === 'string' ? 
+                parseFloat(inv.montant_ttc.replace(',', '.')) : 
+                (inv.montant_ttc || 0);
+            return sum + amount;
+        }, 0) || 0;
+
+        // 2. Prestations Terminées
+        const { data: servicesData, error: servicesError } = await supabase
+            .from('prestations')
+            .select('id, statut')
+            .eq('statut', 'Terminée')
             .gte('date_prestation', startDate.toISOString())
             .lte('date_prestation', endDate.toISOString());
-        if (servicesError) throw servicesError;
-        const completedServices = servicesData.filter(s => s.statut === 'Terminée').length;
+            
+        if (servicesError) {
+            console.error("Erreur prestations:", servicesError);
+            throw servicesError;
+        }
 
-        // Customer Data
-        const { count: totalClients, error: clientsError } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        if (clientsError) throw clientsError;
-        
-        // Employee Data
-        const { count: totalEmployees, error: employeesError } = await supabase.from('employes').select('*', { count: 'exact', head: true }).eq('statut', 'Actif');
-        if (employeesError) throw employeesError;
+        const completedServices = servicesData?.length || 0;
 
-        setReportData({
-            financial: { title: "Chiffre d'Affaires (Payé)", value: `${totalRevenue.toFixed(2)} €`, icon: <DollarSign />, description: `Sur ${timeRangeLabels[timeRange].toLowerCase()}`, chartType: 'line' },
-            operational: { title: "Prestations Terminées", value: `${completedServices}`, icon: <Truck />, description: `Sur ${timeRangeLabels[timeRange].toLowerCase()}`, chartType: 'bar' },
-            customer: { title: "Total Clients Actifs", value: `${totalClients || 0}`, icon: <Users />, description: `Au ${format(now, "dd/MM/yyyy")}`, chartType: 'pie' },
-            employee: { title: "Total Employés Actifs", value: `${totalEmployees || 0}`, icon: <Users />, description: `Au ${format(now, "dd/MM/yyyy")}`, chartType: 'line' },
-        });
+        // 3. Total Clients
+        const { data: clientsData, error: clientsError } = await supabase
+            .from('clients')
+            .select('id');
+            
+        if (clientsError) {
+            console.error("Erreur clients:", clientsError);
+            throw clientsError;
+        }
+
+        const totalClients = clientsData?.length || 0;
+
+        const newReportData = {
+            financial: {
+                title: "Chiffre d'Affaires (Payé)",
+                value: `${totalRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
+                icon: <DollarSign />,
+                description: `Sur ${timeRangeLabels[timeRange]?.toLowerCase() || 'la période'}`,
+                chartType: 'line',
+                data: []
+            },
+            operational: {
+                title: "Prestations Terminées",
+                value: completedServices.toString(),
+                icon: <Truck />,
+                description: `Sur ${timeRangeLabels[timeRange]?.toLowerCase() || 'la période'}`,
+                chartType: 'bar',
+                data: []
+            },
+            customer: {
+                title: "Total Clients",
+                value: totalClients.toString(),
+                icon: <Users />,
+                description: `Au ${format(now, "dd/MM/yyyy")}`,
+                chartType: 'line',
+                data: []
+            }
+        };
+
+        setReportData(newReportData);
 
     } catch (error) {
-        console.error("Error fetching report data:", error);
-        toast({ title: "Erreur de rapport", description: "Impossible de charger les données pour les rapports.", variant: "destructive"});
+        console.error("Erreur détaillée:", error);
+        toast({ 
+            title: "Erreur de rapport", 
+            description: error.message || "Impossible de charger les données pour les rapports.", 
+            variant: "destructive"
+        });
     }
   }, [timeRange, toast]);
 
+  // Ajouter un effet pour surveiller les changements de timeRange
   useEffect(() => {
-    fetchDataForReports();
+    console.log("Chargement des données...");
+    fetchDataForReports().catch(error => {
+        console.error("Erreur lors du chargement initial:", error);
+    });
   }, [fetchDataForReports]);
 
 
@@ -243,7 +369,7 @@ const ReportsPage = () => {
                  if(!error) value = `${count} factures`;
             }
         } else if (selectedReportType === 'operational_efficiency') {
-             if (pointId === 'completed_jobs') {
+             if (pointId === 'completed_services') {
                 const { count, error } = await supabase.from('prestations').select('*', {count: 'exact', head:true}).eq('statut', 'Terminée').gte('date_prestation', sDate).lte('date_prestation', eDate);
                  if(!error) value = `${count} prestations`;
              }
@@ -306,11 +432,10 @@ const ReportsPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <ReportCard {...reportData.financial} />
         <ReportCard {...reportData.operational} />
         <ReportCard {...reportData.customer} />
-        <ReportCard {...reportData.employee} />
       </div>
 
       <Card className="shadow-xl border-none bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">

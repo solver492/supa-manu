@@ -16,6 +16,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table";
 import ServiceFormDialog from "@/components/services/ServiceFormDialog";
 import DeleteServiceDialog from "@/components/services/DeleteServiceDialog";
 import ServicePrintView from '@/components/services/ServicePrintView';
+import ServiceViewDialog from '@/components/services/ServiceViewDialog';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from '@/lib/supabaseClient';
 import { format, parseISO, isValid } from 'date-fns';
@@ -28,35 +29,10 @@ const ServicesPage = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [currentService, setCurrentService] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState(null);
-  const [serviceToPrint, setServiceToPrint] = useState(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const printRef = useRef();
-
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: () => `Prestation-${serviceToPrint?.id?.substring(0,8) || 'details'}`,
-    onAfterPrint: () => setServiceToPrint(null),
-  });
-  
-  const preparePrint = (service) => {
-    // Reformat service data for printing if necessary, especially date
-    const serviceDate = service.date_prestation && isValid(parseISO(service.date_prestation)) ? parseISO(service.date_prestation) : new Date();
-    const printableService = {
-      ...service,
-      date: serviceDate.toISOString(), // Ensure date is in ISO string for ServicePrintView
-      client: service.clients?.nom || 'Client inconnu', // Use joined client name
-      // Add other joined fields if needed by ServicePrintView
-    };
-    setServiceToPrint(printableService);
-  };
-  
-  useEffect(() => {
-    if (serviceToPrint) {
-      handlePrint();
-    }
-  }, [serviceToPrint, handlePrint]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -95,16 +71,34 @@ const ServicesPage = () => {
   };
 
   const handleDeleteService = (service) => {
-    setServiceToDelete(service);
+    setCurrentService(service);
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = async () => {
-    if (!serviceToDelete) return;
+  const handleViewService = useCallback((service) => {
+    setCurrentService(service);
+    setIsViewDialogOpen(true);
+  }, []);
+
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: `Prestation_${currentService?.id || 'nouvelle'}`,
+    onAfterPrint: () => {
+      setCurrentService(null);
+    },
+  });
+
+  const handlePrintService = useCallback((service) => {
+    setCurrentService(service);
+    setTimeout(handlePrint, 100);
+  }, [handlePrint]);
+
+  const handleConfirmDelete = async () => {
+    if (!currentService) return;
     const { error } = await supabase
       .from('prestations')
       .delete()
-      .eq('id', serviceToDelete.id);
+      .eq('id', currentService.id);
 
     if (error) {
       toast({ title: "Erreur de suppression", description: `Impossible de supprimer la prestation: ${error.message}`, variant: "destructive" });
@@ -113,7 +107,7 @@ const ServicesPage = () => {
       fetchData();
     }
     setIsDeleteDialogOpen(false);
-    setServiceToDelete(null);
+    setCurrentService(null);
   };
 
   const handleSubmitForm = async (serviceData) => {
@@ -121,11 +115,8 @@ const ServicesPage = () => {
     const payload = { ...serviceData }; // Already formatted in ServiceFormDialog
 
     if (currentService && currentService.id) {
-       payload.updated_at = new Date().toISOString();
        result = await supabase.from('prestations').update(payload).eq('id', currentService.id).select('*, clients(nom)');
     } else {
-       // For new services, ensure created_by is set if your RLS/triggers expect it
-       // payload.created_by = supabase.auth.getUser()?.id; // Example, ensure user is available
        result = await supabase.from('prestations').insert([payload]).select('*, clients(nom)');
     }
     
@@ -180,9 +171,18 @@ const ServicesPage = () => {
             <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Ouvrir menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => preparePrint(service)}><Printer className="mr-2 h-4 w-4" /> Imprimer Fiche</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEditService(service)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
-              {/* <DropdownMenuItem onClick={() => alert("Visualisation non implémentée")}><Eye className="mr-2 h-4 w-4" /> Visualiser</DropdownMenuItem> */}
+              <DropdownMenuItem onClick={() => handleEditService(service)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Modifier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleViewService(service)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Voir les détails
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handlePrintService(service)}>
+                <Printer className="mr-2 h-4 w-4" />
+                Imprimer
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleDeleteService(service)} className="text-red-600 focus:text-red-500 focus:bg-red-100/50 dark:focus:bg-red-900/50"><Trash2 className="mr-2 h-4 w-4" /> Supprimer</DropdownMenuItem>
             </DropdownMenuContent>
@@ -236,15 +236,19 @@ const ServicesPage = () => {
       <DeleteServiceDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={confirmDelete}
-        serviceId={serviceToDelete?.id}
+        onConfirm={handleConfirmDelete}
+        service={currentService}
       />
       
-      {serviceToPrint && (
-        <div style={{ display: 'none' }}>
-          <ServicePrintView ref={printRef} service={serviceToPrint} />
-        </div>
-      )}
+      <div className="hidden">
+        <ServicePrintView ref={printRef} service={currentService} />
+      </div>
+
+      <ServiceViewDialog
+        isOpen={isViewDialogOpen}
+        onClose={() => setIsViewDialogOpen(false)}
+        service={currentService}
+      />
     </motion.div>
   );
 };
