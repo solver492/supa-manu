@@ -223,7 +223,7 @@ const ReportsPage = () => {
             // 1. Chiffre d'Affaires (Payé)
             supabase
                 .from('factures')
-                .select('montant_ttc, montant, taux_tva, statut, date_emission, numero_facture')
+                .select('montant_ttc, montant_ht, montant, taux_tva, statut, date_emission, numero_facture')
                 .eq('statut', 'Payée')
                 .gte('date_emission', startDate.toISOString())
                 .lte('date_emission', endDate.toISOString()),
@@ -268,21 +268,31 @@ const ReportsPage = () => {
         // Calculs financiers
         const totalRevenue = invoicesResponse.data?.reduce((sum, inv) => {
             console.log("Processing invoice:", inv);
-            // Essayer d'abord montant_ttc, sinon calculer à partir de montant (HT)
             let amount = 0;
+            
+            // Essayer différents champs de montant dans l'ordre de priorité
             if (inv.montant_ttc) {
                 amount = typeof inv.montant_ttc === 'string' ? 
                     parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
                     parseFloat(inv.montant_ttc);
+            } else if (inv.montant_ht) {
+                // Utiliser montant_ht + TVA
+                const montantHT = typeof inv.montant_ht === 'string' ? 
+                    parseFloat(inv.montant_ht.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                    parseFloat(inv.montant_ht);
+                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
+                amount = montantHT * (1 + tauxTVA);
             } else if (inv.montant) {
-                // Si pas de montant_ttc, calculer à partir du montant HT
+                // Si pas de montant_ttc ni montant_ht, calculer à partir du montant (HT)
                 const montantHT = typeof inv.montant === 'string' ? 
                     parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
                     parseFloat(inv.montant);
                 const tauxTVA = parseFloat(inv.taux_tva || 0.20);
                 amount = montantHT * (1 + tauxTVA);
             }
+            
             console.log("Calculated amount:", amount);
+            console.log("Invoice fields:", { montant_ttc: inv.montant_ttc, montant_ht: inv.montant_ht, montant: inv.montant, taux_tva: inv.taux_tva });
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0) || 0;
         
@@ -307,7 +317,7 @@ const ReportsPage = () => {
             console.log("No paid invoices found, trying to get all invoices for chart...");
             const allInvoicesResponse = await supabase
                 .from('factures')
-                .select('montant_ttc, montant, taux_tva, statut, date_emission')
+                .select('montant_ttc, montant_ht, montant, taux_tva, statut, date_emission')
                 .gte('date_emission', startDate.toISOString())
                 .lte('date_emission', endDate.toISOString())
                 .limit(10);
@@ -324,6 +334,12 @@ const ReportsPage = () => {
                 amount = typeof inv.montant_ttc === 'string' ? 
                     parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
                     parseFloat(inv.montant_ttc);
+            } else if (inv.montant_ht) {
+                const montantHT = typeof inv.montant_ht === 'string' ? 
+                    parseFloat(inv.montant_ht.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                    parseFloat(inv.montant_ht);
+                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
+                amount = montantHT * (1 + tauxTVA);
             } else if (inv.montant) {
                 const montantHT = typeof inv.montant === 'string' ? 
                     parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
