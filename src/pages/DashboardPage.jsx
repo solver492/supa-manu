@@ -185,6 +185,10 @@ const DashboardPage = () => {
         return order[a.type] - order[b.type];
       }));
 
+      // Calculs de dates pour les filtres
+      const monthStart = startOfMonth(new Date());
+      const weekStart = startOfWeek(new Date(), { locale: fr });
+
       // Calculs financiers - utiliser la même logique que la page Rapports
       const paidInvoicesThisMonth = factures.filter(inv => {
         const isPaid = inv.statut === 'Payée' || inv.statut === 'Payé';
@@ -227,6 +231,35 @@ const DashboardPage = () => {
 
       console.log("Total revenue calculated:", totalRevenue);
       console.log("Paid invoices this month:", paidInvoicesThisMonth.length);
+
+      // Calculs clients
+      const newClientsThisMonth = clients.filter(client => {
+        const creationField = client.created_at || client.date_creation;
+        if (!creationField) return false;
+
+        try {
+          return parseISO(creationField) >= monthStart;
+        } catch (error) {
+          return false;
+        }
+      }).length;
+
+      // Calculs prestations
+      const servicesThisWeek = prestations.filter(prestation => {
+        const prestationField = prestation.date_prestation || prestation.date;
+        if (!prestationField) return false;
+
+        try {
+          return parseISO(prestationField) >= weekStart;
+        } catch (error) {
+          return false;
+        }
+      }).length;
+
+      // Calculs factures en attente
+      const pendingInvoices = factures.filter(inv => 
+        inv.statut === 'En attente' || inv.statut === 'Brouillon'
+      ).length;
 
       setKpiData([
         { 
