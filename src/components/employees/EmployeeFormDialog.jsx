@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -11,36 +12,52 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Briefcase, DollarSign, Users2, ShieldCheck, Phone } from 'lucide-react';
+import { User, Briefcase, DollarSign, Users2, ShieldCheck, Phone, Mail, Calendar } from 'lucide-react';
 
 const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles, employeeStatus }) => {
   const [formData, setFormData] = useState({
     nom: '',
-    poste: '',
     telephone: '',
-    disponibilite: '',
-    salaireJournalier: '',
-    competences: '',
-    avatar: '',
+    email: '',
+    poste: '',
     equipe: '',
-    nbManutentionnairesEquipe: '',
+    nb_manutentionnaires_equipe: '',
+    disponibilite: '',
+    salaire_journalier: '',
+    competences: '',
+    avatar_url: '',
+    date_embauche: '',
   });
 
   useEffect(() => {
     if (employee) {
       setFormData({
         nom: employee.nom || '',
-        poste: employee.poste || '',
         telephone: employee.telephone || '',
-        disponibilite: employee.disponibilite || '',
-        salaireJournalier: employee.salaireJournalier || '',
-        competences: employee.competences || '',
-        avatar: employee.avatar || '',
+        email: employee.email || '',
+        poste: employee.poste || '',
         equipe: employee.equipe || '',
-        nbManutentionnairesEquipe: employee.nbManutentionnairesEquipe || '',
+        nb_manutentionnaires_equipe: employee.nb_manutentionnaires_equipe || '',
+        disponibilite: employee.disponibilite || '',
+        salaire_journalier: employee.salaire_journalier || '',
+        competences: employee.competences || '',
+        avatar_url: employee.avatar_url || '',
+        date_embauche: employee.date_embauche ? employee.date_embauche.split('T')[0] : '',
       });
     } else {
-      setFormData({ nom: '', poste: '', telephone: '', disponibilite: '', salaireJournalier: '', competences: '', avatar: '', equipe: '', nbManutentionnairesEquipe: '' });
+      setFormData({
+        nom: '',
+        telephone: '',
+        email: '',
+        poste: '',
+        equipe: '',
+        nb_manutentionnaires_equipe: '',
+        disponibilite: '',
+        salaire_journalier: '',
+        competences: '',
+        avatar_url: '',
+        date_embauche: new Date().toISOString().split('T')[0],
+      });
     }
   }, [employee, isOpen]);
 
@@ -51,28 +68,38 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
 
   const handleSelectChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-     if (name === 'poste' && value !== "Chef d'équipe") {
-      setFormData(prev => ({ ...prev, equipe: '', nbManutentionnairesEquipe: '' }));
+    if (name === 'poste' && value !== "Chef d'équipe") {
+      setFormData(prev => ({ ...prev, equipe: '', nb_manutentionnaires_equipe: '' }));
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const dataToSubmit = { ...formData };
+    
+    // Nettoyer les données selon le poste
     if (dataToSubmit.poste !== "Chef d'équipe") {
       delete dataToSubmit.equipe;
-      delete dataToSubmit.nbManutentionnairesEquipe;
+      delete dataToSubmit.nb_manutentionnaires_equipe;
     } else {
-       dataToSubmit.nbManutentionnairesEquipe = dataToSubmit.nbManutentionnairesEquipe ? parseInt(dataToSubmit.nbManutentionnairesEquipe, 10) : 0;
+      dataToSubmit.nb_manutentionnaires_equipe = dataToSubmit.nb_manutentionnaires_equipe ? 
+        parseInt(dataToSubmit.nb_manutentionnaires_equipe, 10) : null;
     }
-    dataToSubmit.salaireJournalier = parseFloat(dataToSubmit.salaireJournalier);
-    dataToSubmit.avatar = dataToSubmit.avatar || `https://avatar.vercel.sh/${dataToSubmit.nom.split(' ').join('')}.png?size=128`;
+    
+    // Convertir le salaire en nombre
+    dataToSubmit.salaire_journalier = parseFloat(dataToSubmit.salaire_journalier);
+    
+    // Générer un avatar par défaut si vide
+    if (!dataToSubmit.avatar_url) {
+      dataToSubmit.avatar_url = `https://avatar.vercel.sh/${dataToSubmit.nom.split(' ').join('')}.png?size=128`;
+    }
+    
     onSubmit(dataToSubmit);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{employee ? "Modifier l'Employé" : "Ajouter un Nouvel Employé"}</DialogTitle>
           <DialogDescription>
@@ -85,10 +112,17 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
               <Label htmlFor="nom"><User className="inline-block mr-2 h-4 w-4 text-primary" />Nom Complet</Label>
               <Input id="nom" name="nom" value={formData.nom} onChange={handleChange} required />
             </div>
+            
+            <div className="space-y-1">
+              <Label htmlFor="email"><Mail className="inline-block mr-2 h-4 w-4 text-primary" />Email</Label>
+              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="email@exemple.com" />
+            </div>
+            
             <div className="space-y-1">
               <Label htmlFor="telephone"><Phone className="inline-block mr-2 h-4 w-4 text-primary" />Téléphone</Label>
               <Input id="telephone" name="telephone" type="tel" value={formData.telephone} onChange={handleChange} placeholder="Ex: 0612345678" />
             </div>
+            
             <div className="space-y-1">
               <Label htmlFor="poste"><Briefcase className="inline-block mr-2 h-4 w-4 text-primary" />Poste</Label>
               <Select name="poste" value={formData.poste} onValueChange={(value) => handleSelectChange('poste', value)} required>
@@ -98,6 +132,7 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
                 </SelectContent>
               </Select>
             </div>
+            
             {formData.poste === "Chef d'équipe" && (
               <>
                 <div className="space-y-1">
@@ -105,11 +140,12 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
                   <Input id="equipe" name="equipe" value={formData.equipe} onChange={handleChange} placeholder="Ex: Équipe Alpha, Les Costauds..." />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="nbManutentionnairesEquipe"><ShieldCheck className="inline-block mr-2 h-4 w-4 text-primary" />Nombre de Manutentionnaires dans l'équipe</Label>
-                  <Input id="nbManutentionnairesEquipe" name="nbManutentionnairesEquipe" type="number" min="0" value={formData.nbManutentionnairesEquipe} onChange={handleChange} placeholder="Ex: 3" />
+                  <Label htmlFor="nb_manutentionnaires_equipe"><ShieldCheck className="inline-block mr-2 h-4 w-4 text-primary" />Nombre de Manutentionnaires dans l'équipe</Label>
+                  <Input id="nb_manutentionnaires_equipe" name="nb_manutentionnaires_equipe" type="number" min="0" value={formData.nb_manutentionnaires_equipe} onChange={handleChange} placeholder="Ex: 3" />
                 </div>
               </>
             )}
+            
             <div className="space-y-1">
               <Label htmlFor="disponibilite">Disponibilité</Label>
               <Select name="disponibilite" value={formData.disponibilite} onValueChange={(value) => handleSelectChange('disponibilite', value)} required>
@@ -119,22 +155,32 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
                 </SelectContent>
               </Select>
             </div>
+            
             <div className="space-y-1">
-              <Label htmlFor="salaireJournalier"><DollarSign className="inline-block mr-2 h-4 w-4 text-primary" />Salaire Journalier (€)</Label>
-              <Input id="salaireJournalier" name="salaireJournalier" type="number" step="0.01" value={formData.salaireJournalier} onChange={handleChange} required />
+              <Label htmlFor="salaire_journalier"><DollarSign className="inline-block mr-2 h-4 w-4 text-primary" />Salaire Journalier (€)</Label>
+              <Input id="salaire_journalier" name="salaire_journalier" type="number" step="0.01" value={formData.salaire_journalier} onChange={handleChange} required />
             </div>
+            
+            <div className="space-y-1">
+              <Label htmlFor="date_embauche"><Calendar className="inline-block mr-2 h-4 w-4 text-primary" />Date d'embauche</Label>
+              <Input id="date_embauche" name="date_embauche" type="date" value={formData.date_embauche} onChange={handleChange} />
+            </div>
+            
             <div className="space-y-1">
               <Label htmlFor="competences">Compétences (séparées par des virgules)</Label>
               <Input id="competences" name="competences" value={formData.competences} onChange={handleChange} />
             </div>
+            
             <div className="space-y-1">
-              <Label htmlFor="avatar">URL de l'Avatar (optionnel)</Label>
-              <Input id="avatar" name="avatar" value={formData.avatar} onChange={handleChange} placeholder="https://example.com/avatar.jpg"/>
+              <Label htmlFor="avatar_url">URL de l'Avatar (optionnel)</Label>
+              <Input id="avatar_url" name="avatar_url" value={formData.avatar_url} onChange={handleChange} placeholder="https://example.com/avatar.jpg"/>
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
-            <Button type="submit" className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-primary-foreground">{employee ? "Sauvegarder" : "Ajouter"}</Button>
+            <Button type="submit" className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-primary-foreground">
+              {employee ? "Sauvegarder" : "Ajouter"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit, Trash2, MoreHorizontal, MessageSquare } from 'lucide-react';
+import { Edit, Trash2, MoreHorizontal, MessageSquare, Mail } from 'lucide-react';
+import { format, parseISO, isValid } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export const getEmployeeTableColumns = (onEdit, onDelete) => [
   {
@@ -39,12 +42,30 @@ export const getEmployeeTableColumns = (onEdit, onDelete) => [
     cell: ({ row }) => (
       <div className="flex items-center space-x-3">
         <Avatar>
-          <AvatarImage src={row.original.avatar} alt={row.original.nom} />
+          <AvatarImage src={row.original.avatar_url} alt={row.original.nom} />
           <AvatarFallback>{row.original.nom.split(' ').map(n => n[0]).join('')}</AvatarFallback>
         </Avatar>
         <span>{row.original.nom}</span>
       </div>
     )
+  },
+  { 
+    accessorKey: "email", 
+    header: "Email",
+    cell: ({ row }) => {
+      const email = row.original.email;
+      if (!email) return 'N/A';
+      return (
+        <div className="flex items-center space-x-2">
+          <span>{email}</span>
+          <a href={`mailto:${email}`} title="Envoyer un email">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 hover:text-blue-600">
+              <Mail size={16} />
+            </Button>
+          </a>
+        </div>
+      );
+    }
   },
   { 
     accessorKey: "telephone", 
@@ -72,15 +93,29 @@ export const getEmployeeTableColumns = (onEdit, onDelete) => [
     cell: ({ row }) => row.original.poste === "Chef d'équipe" ? row.original.equipe || 'N/A' : 'N/A'
   },
   { 
-    accessorKey: "nbManutentionnairesEquipe", 
+    accessorKey: "nb_manutentionnaires_equipe", 
     header: "Manut. Équipe",
-    cell: ({ row }) => row.original.poste === "Chef d'équipe" ? row.original.nbManutentionnairesEquipe || 0 : 'N/A'
+    cell: ({ row }) => row.original.poste === "Chef d'équipe" ? row.original.nb_manutentionnaires_equipe || 0 : 'N/A'
   },
   { accessorKey: "disponibilite", header: ({ column }) => <DataTableColumnHeader column={column} title="Disponibilité" /> },
   { 
-    accessorKey: "salaireJournalier", 
+    accessorKey: "salaire_journalier", 
     header: ({ column }) => <DataTableColumnHeader column={column} title="Salaire Journalier" />,
-    cell: ({ row }) => `${row.original.salaireJournalier} €`
+    cell: ({ row }) => `${row.original.salaire_journalier} €`
+  },
+  { 
+    accessorKey: "date_embauche", 
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Date d'embauche" />,
+    cell: ({ row }) => {
+      const date = row.original.date_embauche;
+      if (!date) return 'N/A';
+      try {
+        const parsedDate = typeof date === 'string' ? parseISO(date) : date;
+        return isValid(parsedDate) ? format(parsedDate, 'dd/MM/yyyy', { locale: fr }) : 'N/A';
+      } catch (error) {
+        return 'N/A';
+      }
+    }
   },
   {
     id: "actions",
