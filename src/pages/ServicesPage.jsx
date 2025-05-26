@@ -113,11 +113,17 @@ const ServicesPage = () => {
   const handleSubmitForm = async (serviceData) => {
     let result;
     const payload = { ...serviceData }; // Already formatted in ServiceFormDialog
+    
+    // Nettoyer le payload pour éviter les champs automatiques
+    const cleanPayload = { ...payload };
+    delete cleanPayload.created_at;
+    delete cleanPayload.updated_at;
+    delete cleanPayload.id;
 
     if (currentService && currentService.id) {
-       result = await supabase.from('prestations').update(payload).eq('id', currentService.id).select('*');
+       result = await supabase.from('prestations').update(cleanPayload).eq('id', currentService.id).select('*');
     } else {
-       result = await supabase.from('prestations').insert([payload]).select('*');
+       result = await supabase.from('prestations').insert([cleanPayload]).select('*');
     }
     
     const { data, error } = result;
