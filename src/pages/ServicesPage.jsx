@@ -145,9 +145,9 @@ const ServicesPage = () => {
       cell: ({row}) => <span className="font-mono text-xs">{row.original.id.substring(0,8)}...</span> 
     },
     { 
-      accessorKey: "clients.nom", 
+      accessorKey: "nom_client", 
       header: ({ column }) => <DataTableColumnHeader column={column} title="Client" />,
-      cell: ({row}) => row.original.clients?.nom || 'N/A'
+      cell: ({row}) => row.original.nom_client || 'N/A'
     },
     { 
       accessorKey: "type_prestation", 
