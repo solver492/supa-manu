@@ -1,124 +1,127 @@
 
-import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DataTableColumnHeader } from "@/components/ui/data-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit, Trash2, MoreHorizontal, MessageSquare, Mail } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Edit, Trash2, Phone, Mail } from 'lucide-react';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-export const getEmployeeTableColumns = (onEdit, onDelete) => [
+export const employeeTableColumns = (onEdit, onDelete) => [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Tout sélectionner"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Sélectionner la ligne"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  { 
-    accessorKey: "nom", 
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Nom" />,
-    cell: ({ row }) => (
-      <div className="flex items-center space-x-3">
-        <Avatar>
-          <AvatarImage src={row.original.avatar_url} alt={row.original.nom} />
-          <AvatarFallback>{row.original.nom.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-        </Avatar>
-        <span>{row.original.nom}</span>
-      </div>
-    )
-  },
-  { 
-    accessorKey: "email", 
-    header: "Email",
+    accessorKey: 'nom',
+    header: 'Employé',
     cell: ({ row }) => {
-      const email = row.original.email;
-      if (!email) return 'N/A';
+      const employee = row.original;
       return (
-        <div className="flex items-center space-x-2">
-          <span>{email}</span>
-          <a href={`mailto:${email}`} title="Envoyer un email">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 hover:text-blue-600">
-              <Mail size={16} />
-            </Button>
-          </a>
+        <div className="flex items-center space-x-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={employee.avatar_url} alt={employee.nom} />
+            <AvatarFallback>
+              {employee.nom?.split(' ').map(n => n[0]).join('').toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="font-medium">{employee.nom}</div>
+            <div className="text-sm text-muted-foreground">{employee.email}</div>
+          </div>
         </div>
       );
-    }
+    },
   },
-  { 
-    accessorKey: "telephone", 
-    header: "Téléphone",
+  {
+    accessorKey: 'poste',
+    header: 'Poste',
     cell: ({ row }) => {
-      const phone = row.original.telephone;
-      if (!phone) return 'N/A';
-      const whatsappLink = `https://wa.me/${phone.replace(/\s+/g, '')}`;
+      const poste = row.getValue('poste');
       return (
-        <div className="flex items-center space-x-2">
-          <span>{phone}</span>
-          <a href={whatsappLink} target="_blank" rel="noopener noreferrer" title="Contacter sur WhatsApp">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500 hover:text-green-600">
-              <MessageSquare size={16} />
-            </Button>
-          </a>
+        <Badge variant="outline" className="font-medium">
+          {poste}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: 'equipe',
+    header: 'Équipe',
+    cell: ({ row }) => {
+      const equipe = row.getValue('equipe');
+      return (
+        <Badge variant="secondary">
+          {equipe}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: 'telephone',
+    header: 'Contact',
+    cell: ({ row }) => {
+      const employee = row.original;
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center text-sm">
+            <Phone className="h-3 w-3 mr-1" />
+            {employee.telephone}
+          </div>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Mail className="h-3 w-3 mr-1" />
+            {employee.email}
+          </div>
         </div>
       );
-    }
+    },
   },
-  { accessorKey: "poste", header: ({ column }) => <DataTableColumnHeader column={column} title="Poste" /> },
-  { 
-    accessorKey: "equipe", 
-    header: "Équipe",
-    cell: ({ row }) => row.original.poste === "Chef d'équipe" ? row.original.equipe || 'N/A' : 'N/A'
-  },
-  { 
-    accessorKey: "nb_manutentionnaires_equipe", 
-    header: "Manut. Équipe",
-    cell: ({ row }) => row.original.poste === "Chef d'équipe" ? row.original.nb_manutentionnaires_equipe || 0 : 'N/A'
-  },
-  { accessorKey: "disponibilite", header: ({ column }) => <DataTableColumnHeader column={column} title="Disponibilité" /> },
-  { 
-    accessorKey: "salaire_journalier", 
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Salaire Journalier" />,
-    cell: ({ row }) => `${row.original.salaire_journalier} €`
-  },
-  { 
-    accessorKey: "date_embauche", 
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Date d'embauche" />,
+  {
+    accessorKey: 'disponibilite',
+    header: 'Disponibilité',
     cell: ({ row }) => {
-      const date = row.original.date_embauche;
-      if (!date) return 'N/A';
+      const disponibilite = row.getValue('disponibilite');
+      const variant = disponibilite === 'Disponible' ? 'default' : 
+                    disponibilite === 'Occupé' ? 'destructive' : 'secondary';
+      return (
+        <Badge variant={variant}>
+          {disponibilite}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: 'salaire_journalier',
+    header: 'Salaire/jour',
+    cell: ({ row }) => {
+      const salaire = row.getValue('salaire_journalier');
+      return salaire ? `${parseFloat(salaire).toFixed(2)} €` : 'Non défini';
+    },
+  },
+  {
+    accessorKey: 'date_embauche',
+    header: 'Date d\'embauche',
+    cell: ({ row }) => {
+      const date = row.getValue('date_embauche');
+      if (!date) return 'Non définie';
       try {
-        const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-        return isValid(parsedDate) ? format(parsedDate, 'dd/MM/yyyy', { locale: fr }) : 'N/A';
-      } catch (error) {
-        return 'N/A';
+        return format(new Date(date), 'dd/MM/yyyy', { locale: fr });
+      } catch {
+        return 'Date invalide';
       }
-    }
+    },
   },
   {
-    id: "actions",
+    accessorKey: 'actif',
+    header: 'Statut',
+    cell: ({ row }) => {
+      const actif = row.getValue('actif');
+      return (
+        <Badge variant={actif ? 'default' : 'secondary'}>
+          {actif ? 'Actif' : 'Inactif'}
+        </Badge>
+      );
+    },
+  },
+  {
+    id: 'actions',
+    header: 'Actions',
     cell: ({ row }) => {
       const employee = row.original;
       return (
@@ -130,13 +133,16 @@ export const getEmployeeTableColumns = (onEdit, onDelete) => [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onEdit(employee)}>
-              <Edit className="mr-2 h-4 w-4" /> Modifier
+              <Edit className="mr-2 h-4 w-4" />
+              Modifier
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onDelete(employee)} className="text-red-600">
-              <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+            <DropdownMenuItem 
+              onClick={() => onDelete(employee)}
+              className="text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Supprimer
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
