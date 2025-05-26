@@ -1,0 +1,46 @@
+Failed to load resource: the server responded with a status of 500 ()
+VM8 login:4  Fetch error from https://jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?select=id%2Cnom%2Ctelephone%2Cemail%2Cposte%2Cequipe%2Cnb_manutentionnaires_equipe%2Cdisponibilite%2Csalaire_journalier%2Ccompetences%2Cavatar_url%2Cdate_embauche%2Cactif%2Ccreated_at%2Cupdated_at&order=created_at.desc: {"code":"42P17","details":null,"hint":null,"message":"infinite recursion detected in policy for relation \"employes\""}
+console.error @ VM8 login:4
+VM8 login:4  Erreur Supabase: Object
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors du chargement des employés: Object
+console.error @ VM8 login:4
+jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?select=id%2Cnom%2Ctelephone%2Cemail%2Cposte%2Cequipe%2Cnb_manutentionnaires_equipe%2Cdisponibilite%2Csalaire_journalier%2Ccompetences%2Cavatar_url%2Cdate_embauche%2Cactif%2Ccreated_at%2Cupdated_at&order=created_at.desc:1 
+            
+            
+            Failed to load resource: the server responded with a status of 500 ()
+VM8 login:4  Fetch error from https://jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?select=id%2Cnom%2Ctelephone%2Cemail%2Cposte%2Cequipe%2Cnb_manutentionnaires_equipe%2Cdisponibilite%2Csalaire_journalier%2Ccompetences%2Cavatar_url%2Cdate_embauche%2Cactif%2Ccreated_at%2Cupdated_at&order=created_at.desc: {"code":"42P17","details":null,"hint":null,"message":"infinite recursion detected in policy for relation \"employes\""}
+console.error @ VM8 login:4
+VM8 login:4  Erreur Supabase: Object
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors du chargement des employés: Object
+console.error @ VM8 login:4
+jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?columns=%22nom%22%2C%22telephone%22%2C%22email%22%2C%22poste%22%2C%22equipe%22%2C%22nb_manutentionnaires_equipe%22%2C%22disponibilite%22%2C%22salaire_journalier%22%2C%22competences%22%2C%22avatar_url%22%2C%22date_embauche%22%2C%22actif%22&select=*:1 
+            
+            
+            Failed to load resource: the server responded with a status of 500 ()
+VM8 login:4  Fetch error from https://jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?columns=%22nom%22%2C%22telephone%22%2C%22email%22%2C%22poste%22%2C%22equipe%22%2C%22nb_manutentionnaires_equipe%22%2C%22disponibilite%22%2C%22salaire_journalier%22%2C%22competences%22%2C%22avatar_url%22%2C%22date_embauche%22%2C%22actif%22&select=*: {"code":"42P17","details":null,"hint":null,"message":"infinite recursion detected in policy for relation \"employes\""}
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors de l'ajout: Object
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors de l'ajout de l'employé: Object
+console.error @ VM8 login:4
+jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?columns=%22nom%22%2C%22telephone%22%2C%22email%22%2C%22poste%22%2C%22equipe%22%2C%22nb_manutentionnaires_equipe%22%2C%22disponibilite%22%2C%22salaire_journalier%22%2C%22competences%22%2C%22avatar_url%22%2C%22date_embauche%22%2C%22actif%22&select=*:1 
+            
+            
+            Failed to load resource: the server responded with a status of 500 ()
+VM8 login:4  Fetch error from https://jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?columns=%22nom%22%2C%22telephone%22%2C%22email%22%2C%22poste%22%2C%22equipe%22%2C%22nb_manutentionnaires_equipe%22%2C%22disponibilite%22%2C%22salaire_journalier%22%2C%22competences%22%2C%22avatar_url%22%2C%22date_embauche%22%2C%22actif%22&select=*: {"code":"42P17","details":null,"hint":null,"message":"infinite recursion detected in policy for relation \"employes\""}
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors de l'ajout: Object
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors de l'ajout de l'employé: Object
+console.error @ VM8 login:4
+jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?columns=%22nom%22%2C%22telephone%22%2C%22email%22%2C%22poste%22%2C%22equipe%22%2C%22nb_manutentionnaires_equipe%22%2C%22disponibilite%22%2C%22salaire_journalier%22%2C%22competences%22%2C%22avatar_url%22%2C%22date_embauche%22%2C%22actif%22&select=*:1 
+            
+            
+            Failed to load resource: the server responded with a status of 500 ()
+VM8 login:4  Fetch error from https://jfaheztemlnespvqwzlt.supabase.co/rest/v1/employes?columns=%22nom%22%2C%22telephone%22%2C%22email%22%2C%22poste%22%2C%22equipe%22%2C%22nb_manutentionnaires_equipe%22%2C%22disponibilite%22%2C%22salaire_journalier%22%2C%22competences%22%2C%22avatar_url%22%2C%22date_embauche%22%2C%22actif%22&select=*: {"code":"42P17","details":null,"hint":null,"message":"infinite recursion detected in policy for relation \"employes\""}
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors de l'ajout: Object
+console.error @ VM8 login:4
+VM8 login:4  Erreur lors de l'ajout de l'employé: Object
