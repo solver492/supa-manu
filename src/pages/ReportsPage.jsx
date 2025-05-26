@@ -446,19 +446,8 @@ const ReportsPage = () => {
   const handlePrintReport = async () => {
      if (!generatedReportDetails) return;
      
-     // Récupérer les données réelles pour les graphiques
-     const now = new Date();
-     let startDate;
-     let endDate = now;
-     switch (timeRange) {
-         case 'last7days': startDate = subDays(now, 7); break;
-         case 'last30days': startDate = subDays(now, 30); break;
-         case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
-         case 'lastQuarter': startDate = subDays(now, 90); break;
-         case 'currentYear': startDate = startOfYear(now); break;
-         case 'allTime': startDate = new Date(2000,0,1); break;
-         default: startDate = subDays(now, 30);
-     }
+     // Utiliser les données déjà calculées depuis reportData au lieu de recalculer
+     const currentRevenueValue = reportData.financial.value; // Ex: "356,40 €"
      
      const printWindow = window.open('', '_blank');
      printWindow.document.write('<html><head><title>Rapport Personnalisé</title>');
@@ -491,10 +480,78 @@ const ReportsPage = () => {
         printWindow.document.write(`<h3>${point.label}</h3>`);
         printWindow.document.write(`<div class="summary-box"><strong>Valeur: ${point.value || 'N/A'}</strong></div>`);
         
+        // Utiliser les valeurs déjà calculées et affichées correctement
+        if (point.id === 'revenue') {
+          // Utiliser la valeur qui s'affiche correctement dans l'interface
+          point.value = currentRevenueValue;
+        }
+
         // Ajouter des données réelles selon le type de point
         try {
-          if (selectedReportType === 'customer_insights') {
+          if (selectedReportType === 'financial_summary') {
+            if (point.id === 'revenue' || point.id === 'paid_invoices') {
+              // Récupérer les données pour l'affichage du tableau, mais utiliser la valeur déjà calculée
+              const now = new Date();
+              let startDate;
+              let endDate = now;
+              switch (timeRange) {
+                  case 'last7days': startDate = subDays(now, 7); break;
+                  case 'last30days': startDate = subDays(now, 30); break;
+                  case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
+                  case 'lastQuarter': startDate = subDays(now, 90); break;
+                  case 'currentYear': startDate = startOfYear(now); break;
+                  case 'allTime': startDate = new Date(2000,0,1); break;
+                  default: startDate = subDays(now, 30);
+              }
+
+              const { data: facturesData } = await supabase
+                .from('factures')
+                .select('numero_facture, montant_ttc, montant_ht, montant, taux_tva, date_emission')
+                .eq('statut', 'Payée')
+                .gte('date_emission', startDate.toISOString())
+                .lte('date_emission', endDate.toISOString())
+                .order('date_emission', { ascending: false })
+                .limit(10);
+              
+              if (facturesData && facturesData.length > 0) {
+                printWindow.document.write('<div class="chart-section">');
+                printWindow.document.write('<h4>Factures payées récentes:</h4>');
+                printWindow.document.write('<table class="data-table">');
+                printWindow.document.write('<thead><tr><th>N° Facture</th><th>Montant TTC</th><th>Date</th></tr></thead>');
+                printWindow.document.write('<tbody>');
+                facturesData.forEach(facture => {
+                  const date = format(parseISO(facture.date_emission), "dd/MM/yyyy", { locale: fr });
+                  
+                  // Utiliser la même logique de calcul que dans fetchDataForReports
+                  let amount = 0;
+                  if (facture.montant_ttc) {
+                      amount = typeof facture.montant_ttc === 'string' ? 
+                          parseFloat(facture.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                          parseFloat(facture.montant_ttc);
+                  } else if (facture.montant_ht) {
+                      const montantHT = typeof facture.montant_ht === 'string' ? 
+                          parseFloat(facture.montant_ht.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                          parseFloat(facture.montant_ht);
+                      const tauxTVA = parseFloat(facture.taux_tva || 0.20);
+                      amount = montantHT * (1 + tauxTVA);
+                  } else if (facture.montant) {
+                      const montantHT = typeof facture.montant === 'string' ? 
+                          parseFloat(facture.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                          parseFloat(facture.montant);
+                      const tauxTVA = parseFloat(facture.taux_tva || 0.20);
+                      amount = montantHT * (1 + tauxTVA);
+                  }
+                  
+                  printWindow.document.write(`<tr><td>${facture.numero_facture}</td><td>${amount.toFixed(2)} €</td><td>${date}</td></tr>`);
+                });
+                printWindow.document.write('</tbody></table></div>');
+              }
+            }
+          } else if (selectedReportType === 'customer_insights') {
             if (point.id === 'total_customers') {
+              // Utiliser la valeur déjà calculée
+              point.value = reportData.customer.value;
+              
               const { data: clientsData } = await supabase
                 .from('clients')
                 .select('nom, created_at')
@@ -510,53 +567,6 @@ const ReportsPage = () => {
                 clientsData.forEach(client => {
                   const date = format(parseISO(client.created_at), "dd/MM/yyyy", { locale: fr });
                   printWindow.document.write(`<tr><td>${client.nom}</td><td>${date}</td></tr>`);
-                });
-                printWindow.document.write('</tbody></table></div>');
-              }
-            } else if (point.id === 'new_customers_period') {
-              const { data: newClientsData } = await supabase
-                .from('clients')
-                .select('nom, created_at')
-                .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString())
-                .order('created_at', { ascending: false });
-              
-              if (newClientsData && newClientsData.length > 0) {
-                printWindow.document.write('<div class="chart-section">');
-                printWindow.document.write('<h4>Nouveaux clients sur la période:</h4>');
-                printWindow.document.write('<table class="data-table">');
-                printWindow.document.write('<thead><tr><th>Nom du Client</th><th>Date d\'ajout</th></tr></thead>');
-                printWindow.document.write('<tbody>');
-                newClientsData.forEach(client => {
-                  const date = format(parseISO(client.created_at), "dd/MM/yyyy", { locale: fr });
-                  printWindow.document.write(`<tr><td>${client.nom}</td><td>${date}</td></tr>`);
-                });
-                printWindow.document.write('</tbody></table></div>');
-              }
-            }
-          } else if (selectedReportType === 'financial_summary') {
-            if (point.id === 'revenue' || point.id === 'paid_invoices') {
-              const { data: facturesData } = await supabase
-                .from('factures')
-                .select('numero_facture, montant_ttc, date_emission')
-                .eq('statut', 'Payée')
-                .gte('date_emission', startDate.toISOString())
-                .lte('date_emission', endDate.toISOString())
-                .order('date_emission', { ascending: false })
-                .limit(10);
-              
-              if (facturesData && facturesData.length > 0) {
-                printWindow.document.write('<div class="chart-section">');
-                printWindow.document.write('<h4>Factures payées récentes:</h4>');
-                printWindow.document.write('<table class="data-table">');
-                printWindow.document.write('<thead><tr><th>N° Facture</th><th>Montant TTC</th><th>Date</th></tr></thead>');
-                printWindow.document.write('<tbody>');
-                facturesData.forEach(facture => {
-                  const date = format(parseISO(facture.date_emission), "dd/MM/yyyy", { locale: fr });
-                  const montant = typeof facture.montant_ttc === 'string' ? 
-                    parseFloat(facture.montant_ttc.replace(',', '.')) : 
-                    (facture.montant_ttc || 0);
-                  printWindow.document.write(`<tr><td>${facture.numero_facture}</td><td>${montant.toFixed(2)} €</td><td>${date}</td></tr>`);
                 });
                 printWindow.document.write('</tbody></table></div>');
               }
@@ -725,30 +735,8 @@ const ReportsPage = () => {
             if (selectedReportType === 'financial_summary') {
                 switch (pointId) {
                     case 'revenue':
-                        const { data: revenueData, error: revenueError } = await supabase
-                            .from('factures')
-                            .select('montant_ttc, montant, taux_tva')
-                            .eq('statut', 'Payée')
-                            .gte('date_emission', sDate)
-                            .lte('date_emission', eDate);
-                        if (!revenueError) {
-                            const total = revenueData.reduce((sum, inv) => {
-                                let amount = 0;
-                                if (inv.montant_ttc) {
-                                    amount = typeof inv.montant_ttc === 'string' ? 
-                                        parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                                        parseFloat(inv.montant_ttc);
-                                } else if (inv.montant) {
-                                    const montantHT = typeof inv.montant === 'string' ? 
-                                        parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                                        parseFloat(inv.montant);
-                                    const tauxTVA = parseFloat(inv.taux_tva || 0.20);
-                                    amount = montantHT * (1 + tauxTVA);
-                                }
-                                return sum + (isNaN(amount) ? 0 : amount);
-                            }, 0);
-                            value = `${total.toFixed(2)} €`;
-                        }
+                        // Utiliser la valeur déjà calculée qui s'affiche correctement
+                        value = reportData.financial.value;
                         break;
                     case 'paid_invoices':
                         const { count: paidCount, error: paidError } = await supabase
