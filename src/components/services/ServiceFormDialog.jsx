@@ -30,6 +30,7 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
     type_prestation: serviceTypes[0],
     description: '',
     date_prestation: new Date().toISOString(),
+    time_prestation: '09:00',
     statut: 'en_attente',
     adresse: '',
     nom_client: '',
@@ -40,7 +41,6 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
     duree_estimee: 4,
     nombre_employes: 2,
     nombre_manutentionnaires: 0,
-
     vehicules_requis: [],
     notes: ''
   });
@@ -137,23 +137,22 @@ const ServiceFormDialog = ({ isOpen, onClose, onSubmit, service: initialService 
     combinedDateTime = setMinutes(combinedDateTime, parseInt(minutes, 10));
     
     const payload = {
-      client_id: formData.client_id,
+      client_id: formData.client_id || null,
       type_prestation: formData.type_prestation,
-      description: formData.description,
+      description: formData.description || null,
       date_prestation: combinedDateTime.toISOString(),
       statut: formData.statut,
-      adresse: formData.adresse,
-      nom_client: formData.nom_client,
-      telephone_client: formData.telephone_client,
-      email_client: formData.email_client,
-      details_prestation: formData.details_prestation,
+      adresse: formData.adresse || null,
+      nom_client: formData.nom_client || null,
+      telephone_client: formData.telephone_client || null,
+      email_client: formData.email_client || null,
+      details_prestation: formData.details_prestation || null,
       prix: formData.prix ? parseFloat(formData.prix) : null,
       duree_estimee: formData.duree_estimee ? parseInt(formData.duree_estimee) : null,
       nombre_employes: formData.nombre_employes ? parseInt(formData.nombre_employes) : null,
       nombre_manutentionnaires: formData.nombre_manutentionnaires ? parseInt(formData.nombre_manutentionnaires) : null,
-  
-      vehicules_requis: formData.vehicules_requis,
-      notes: formData.notes
+      vehicules_requis: formData.vehicules_requis || [],
+      notes: formData.notes || null
     };
     
     onSubmit(payload);

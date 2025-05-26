@@ -115,9 +115,9 @@ const ServicesPage = () => {
     const payload = { ...serviceData }; // Already formatted in ServiceFormDialog
 
     if (currentService && currentService.id) {
-       result = await supabase.from('prestations').update(payload).eq('id', currentService.id).select('*, clients(nom)');
+       result = await supabase.from('prestations').update(payload).eq('id', currentService.id).select('*');
     } else {
-       result = await supabase.from('prestations').insert([payload]).select('*, clients(nom)');
+       result = await supabase.from('prestations').insert([payload]).select('*');
     }
     
     const { data, error } = result;
@@ -125,7 +125,7 @@ const ServicesPage = () => {
     if (error) {
       toast({ title: "Erreur d'enregistrement", description: `Impossible de sauvegarder la prestation: ${error.message}`, variant: "destructive" });
     } else {
-      toast({ title: currentService ? "Prestation modifiée" : "Prestation ajoutée", description: `La prestation pour ${data[0].clients?.nom || 'N/A'} a été sauvegardée.` });
+      toast({ title: currentService ? "Prestation modifiée" : "Prestation ajoutée", description: `La prestation a été sauvegardée avec succès.` });
       fetchData();
     }
     setIsFormDialogOpen(false);
