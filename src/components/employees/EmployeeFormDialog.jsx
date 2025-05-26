@@ -12,9 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Briefcase, DollarSign, Users2, ShieldCheck, Phone, Mail, Calendar } from 'lucide-react';
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { fr } from 'date-fns/locale';
+import { CalendarIcon } from 'lucide-react';
 
-const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles, employeeStatus }) => {
+const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee }) => {
   const [formData, setFormData] = useState({
     nom: '',
     telephone: '',
@@ -22,12 +27,15 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
     poste: '',
     equipe: '',
     nb_manutentionnaires_equipe: '',
-    disponibilite: '',
+    disponibilite: 'Disponible',
     salaire_journalier: '',
     competences: '',
     avatar_url: '',
-    date_embauche: '',
+    date_embauche: new Date(),
+    actif: true
   });
+
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   useEffect(() => {
     if (employee) {
@@ -38,11 +46,12 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
         poste: employee.poste || '',
         equipe: employee.equipe || '',
         nb_manutentionnaires_equipe: employee.nb_manutentionnaires_equipe || '',
-        disponibilite: employee.disponibilite || '',
+        disponibilite: employee.disponibilite || 'Disponible',
         salaire_journalier: employee.salaire_journalier || '',
         competences: employee.competences || '',
         avatar_url: employee.avatar_url || '',
-        date_embauche: employee.date_embauche ? employee.date_embauche.split('T')[0] : '',
+        date_embauche: employee.date_embauche ? new Date(employee.date_embauche) : new Date(),
+        actif: employee.actif !== undefined ? employee.actif : true
       });
     } else {
       setFormData({
@@ -52,133 +61,275 @@ const EmployeeFormDialog = ({ isOpen, onClose, onSubmit, employee, employeeRoles
         poste: '',
         equipe: '',
         nb_manutentionnaires_equipe: '',
-        disponibilite: '',
+        disponibilite: 'Disponible',
         salaire_journalier: '',
         competences: '',
         avatar_url: '',
-        date_embauche: new Date().toISOString().split('T')[0],
+        date_embauche: new Date(),
+        actif: true
       });
     }
   }, [employee, isOpen]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
   const handleSelectChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (name === 'poste' && value !== "Chef d'équipe") {
-      setFormData(prev => ({ ...prev, equipe: '', nb_manutentionnaires_equipe: '' }));
-    }
+  };
+
+  const handleDateChange = (date) => {
+    setFormData(prev => ({ ...prev, date_embauche: date }));
+    setDatePickerOpen(false);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const dataToSubmit = { ...formData };
     
-    // Nettoyer les données selon le poste
-    if (dataToSubmit.poste !== "Chef d'équipe") {
-      delete dataToSubmit.equipe;
-      delete dataToSubmit.nb_manutentionnaires_equipe;
-    } else {
-      dataToSubmit.nb_manutentionnaires_equipe = dataToSubmit.nb_manutentionnaires_equipe ? 
-        parseInt(dataToSubmit.nb_manutentionnaires_equipe, 10) : null;
+    // Validation simple
+    if (!formData.nom.trim()) {
+      alert('Le nom est requis');
+      return;
     }
-    
-    // Convertir le salaire en nombre
-    dataToSubmit.salaire_journalier = parseFloat(dataToSubmit.salaire_journalier);
-    
-    // Générer un avatar par défaut si vide
-    if (!dataToSubmit.avatar_url) {
-      dataToSubmit.avatar_url = `https://avatar.vercel.sh/${dataToSubmit.nom.split(' ').join('')}.png?size=128`;
+    if (!formData.email.trim()) {
+      alert('L\'email est requis');
+      return;
     }
-    
-    onSubmit(dataToSubmit);
+
+    // Préparer les données pour l'envoi
+    const submitData = {
+      ...formData,
+      date_embauche: formData.date_embauche.toISOString().split('T')[0], // Format YYYY-MM-DD
+      nb_manutentionnaires_equipe: formData.nb_manutentionnaires_equipe ? parseInt(formData.nb_manutentionnaires_equipe) : null,
+      salaire_journalier: formData.salaire_journalier ? parseFloat(formData.salaire_journalier) : null
+    };
+
+    onSubmit(submitData);
   };
+
+  const disponibiliteOptions = [
+    'Disponible',
+    'Occupé',
+    'En congé',
+    'Malade',
+    'Formation'
+  ];
+
+  const posteOptions = [
+    'Manutentionnaire',
+    'Chef d\'équipe',
+    'Chauffeur',
+    'Responsable',
+    'Coordinateur',
+    'Superviseur'
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{employee ? "Modifier l'Employé" : "Ajouter un Nouvel Employé"}</DialogTitle>
+          <DialogTitle>
+            {employee ? "Modifier l'Employé" : "Ajouter un Nouvel Employé"}
+          </DialogTitle>
           <DialogDescription>
             {employee ? "Modifiez les informations de l'employé." : "Remplissez les informations du nouvel employé."}
           </DialogDescription>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="space-y-1">
-              <Label htmlFor="nom"><User className="inline-block mr-2 h-4 w-4 text-primary" />Nom Complet</Label>
-              <Input id="nom" name="nom" value={formData.nom} onChange={handleChange} required />
+            {/* Nom */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nom" className="text-right">Nom *</Label>
+              <Input 
+                id="nom" 
+                name="nom" 
+                value={formData.nom} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                required 
+              />
             </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="email"><Mail className="inline-block mr-2 h-4 w-4 text-primary" />Email</Label>
-              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="email@exemple.com" />
+
+            {/* Email */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">Email *</Label>
+              <Input 
+                id="email" 
+                name="email" 
+                type="email"
+                value={formData.email} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                required 
+              />
             </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="telephone"><Phone className="inline-block mr-2 h-4 w-4 text-primary" />Téléphone</Label>
-              <Input id="telephone" name="telephone" type="tel" value={formData.telephone} onChange={handleChange} placeholder="Ex: 0612345678" />
+
+            {/* Téléphone */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="telephone" className="text-right">Téléphone</Label>
+              <Input 
+                id="telephone" 
+                name="telephone" 
+                type="tel"
+                value={formData.telephone} 
+                onChange={handleChange} 
+                className="col-span-3" 
+              />
             </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="poste"><Briefcase className="inline-block mr-2 h-4 w-4 text-primary" />Poste</Label>
-              <Select name="poste" value={formData.poste} onValueChange={(value) => handleSelectChange('poste', value)} required>
-                <SelectTrigger><SelectValue placeholder="Sélectionner un poste" /></SelectTrigger>
+
+            {/* Poste */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="poste" className="text-right">Poste</Label>
+              <Select 
+                value={formData.poste} 
+                onValueChange={(value) => handleSelectChange('poste', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Sélectionner un poste" />
+                </SelectTrigger>
                 <SelectContent>
-                  {employeeRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                  {posteOptions.map((poste) => (
+                    <SelectItem key={poste} value={poste}>
+                      {poste}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            
-            {formData.poste === "Chef d'équipe" && (
-              <>
-                <div className="space-y-1">
-                  <Label htmlFor="equipe"><Users2 className="inline-block mr-2 h-4 w-4 text-primary" />Nom de l'Équipe</Label>
-                  <Input id="equipe" name="equipe" value={formData.equipe} onChange={handleChange} placeholder="Ex: Équipe Alpha, Les Costauds..." />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="nb_manutentionnaires_equipe"><ShieldCheck className="inline-block mr-2 h-4 w-4 text-primary" />Nombre de Manutentionnaires dans l'équipe</Label>
-                  <Input id="nb_manutentionnaires_equipe" name="nb_manutentionnaires_equipe" type="number" min="0" value={formData.nb_manutentionnaires_equipe} onChange={handleChange} placeholder="Ex: 3" />
-                </div>
-              </>
-            )}
-            
-            <div className="space-y-1">
-              <Label htmlFor="disponibilite">Disponibilité</Label>
-              <Select name="disponibilite" value={formData.disponibilite} onValueChange={(value) => handleSelectChange('disponibilite', value)} required>
-                <SelectTrigger><SelectValue placeholder="Sélectionner une disponibilité" /></SelectTrigger>
+
+            {/* Équipe */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="equipe" className="text-right">Équipe</Label>
+              <Input 
+                id="equipe" 
+                name="equipe" 
+                value={formData.equipe} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                placeholder="Ex: Équipe A, Équipe B..."
+              />
+            </div>
+
+            {/* Nombre de manutentionnaires dans l'équipe */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nb_manutentionnaires_equipe" className="text-right">
+                Nb Manutentionnaires
+              </Label>
+              <Input 
+                id="nb_manutentionnaires_equipe" 
+                name="nb_manutentionnaires_equipe" 
+                type="number"
+                min="0"
+                value={formData.nb_manutentionnaires_equipe} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                placeholder="Nombre dans l'équipe"
+              />
+            </div>
+
+            {/* Disponibilité */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="disponibilite" className="text-right">Disponibilité</Label>
+              <Select 
+                value={formData.disponibilite} 
+                onValueChange={(value) => handleSelectChange('disponibilite', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {employeeStatus.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                  {disponibiliteOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="salaire_journalier"><DollarSign className="inline-block mr-2 h-4 w-4 text-primary" />Salaire Journalier (€)</Label>
-              <Input id="salaire_journalier" name="salaire_journalier" type="number" step="0.01" value={formData.salaire_journalier} onChange={handleChange} required />
+
+            {/* Salaire journalier */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="salaire_journalier" className="text-right">Salaire Journalier (€)</Label>
+              <Input 
+                id="salaire_journalier" 
+                name="salaire_journalier" 
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.salaire_journalier} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                placeholder="150.00"
+              />
             </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="date_embauche"><Calendar className="inline-block mr-2 h-4 w-4 text-primary" />Date d'embauche</Label>
-              <Input id="date_embauche" name="date_embauche" type="date" value={formData.date_embauche} onChange={handleChange} />
+
+            {/* Date d'embauche */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Date d'embauche</Label>
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="col-span-3 justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.date_embauche ? format(formData.date_embauche, "dd/MM/yyyy", { locale: fr }) : "Sélectionner une date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.date_embauche}
+                    onSelect={handleDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="competences">Compétences (séparées par des virgules)</Label>
-              <Input id="competences" name="competences" value={formData.competences} onChange={handleChange} />
+
+            {/* Compétences */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="competences" className="text-right mt-2">Compétences</Label>
+              <Textarea 
+                id="competences" 
+                name="competences" 
+                value={formData.competences} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                placeholder="Ex: full-stack, manutention lourde, permis poids lourd..."
+                rows={3}
+              />
             </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="avatar_url">URL de l'Avatar (optionnel)</Label>
-              <Input id="avatar_url" name="avatar_url" value={formData.avatar_url} onChange={handleChange} placeholder="https://example.com/avatar.jpg"/>
+
+            {/* URL Avatar */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="avatar_url" className="text-right">URL Avatar</Label>
+              <Input 
+                id="avatar_url" 
+                name="avatar_url" 
+                type="url"
+                value={formData.avatar_url} 
+                onChange={handleChange} 
+                className="col-span-3" 
+                placeholder="https://exemple.com/avatar.jpg"
+              />
             </div>
           </div>
+          
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Annuler</Button>
-            <Button type="submit" className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-primary-foreground">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button 
+              type="submit" 
+              className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-primary-foreground"
+            >
               {employee ? "Sauvegarder" : "Ajouter"}
             </Button>
           </DialogFooter>
