@@ -262,10 +262,21 @@ const ReportsPage = () => {
 
         // Calculs financiers
         const totalRevenue = invoicesResponse.data?.reduce((sum, inv) => {
-            const amount = typeof inv.montant_ttc === 'string' ? 
-                parseFloat(inv.montant_ttc.replace(',', '.')) : 
-                (inv.montant_ttc || 0);
-            return sum + amount;
+            // Essayer d'abord montant_ttc, sinon calculer à partir de montant (HT)
+            let amount = 0;
+            if (inv.montant_ttc) {
+                amount = typeof inv.montant_ttc === 'string' ? 
+                    parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                    parseFloat(inv.montant_ttc);
+            } else if (inv.montant) {
+                // Si pas de montant_ttc, calculer à partir du montant HT
+                const montantHT = typeof inv.montant === 'string' ? 
+                    parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                    parseFloat(inv.montant);
+                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
+                amount = montantHT * (1 + tauxTVA);
+            }
+            return sum + (isNaN(amount) ? 0 : amount);
         }, 0) || 0;
 
         // Calculs opérationnels
@@ -284,15 +295,28 @@ const ReportsPage = () => {
         // Données pour les graphiques
         const revenueChartData = invoicesResponse.data?.reduce((acc, inv) => {
             const date = format(parseISO(inv.date_emission), 'dd/MM');
-            const amount = typeof inv.montant_ttc === 'string' ? 
-                parseFloat(inv.montant_ttc.replace(',', '.')) : 
-                (inv.montant_ttc || 0);
             
-            const existing = acc.find(item => item.name === date);
-            if (existing) {
-                existing.value += amount;
-            } else {
-                acc.push({ name: date, value: amount });
+            // Même logique de calcul que pour le total
+            let amount = 0;
+            if (inv.montant_ttc) {
+                amount = typeof inv.montant_ttc === 'string' ? 
+                    parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                    parseFloat(inv.montant_ttc);
+            } else if (inv.montant) {
+                const montantHT = typeof inv.montant === 'string' ? 
+                    parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                    parseFloat(inv.montant);
+                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
+                amount = montantHT * (1 + tauxTVA);
+            }
+            
+            if (!isNaN(amount) && amount > 0) {
+                const existing = acc.find(item => item.name === date);
+                if (existing) {
+                    existing.value += amount;
+                } else {
+                    acc.push({ name: date, value: amount });
+                }
             }
             return acc;
         }, []).slice(-7) || [];
@@ -660,12 +684,26 @@ const ReportsPage = () => {
                     case 'revenue':
                         const { data: revenueData, error: revenueError } = await supabase
                             .from('factures')
-                            .select('montant_ttc')
+                            .select('montant_ttc, montant, taux_tva')
                             .eq('statut', 'Payée')
                             .gte('date_emission', sDate)
                             .lte('date_emission', eDate);
                         if (!revenueError) {
-                            const total = revenueData.reduce((sum, inv) => sum + (parseFloat(inv.montant_ttc) || 0), 0);
+                            const total = revenueData.reduce((sum, inv) => {
+                                let amount = 0;
+                                if (inv.montant_ttc) {
+                                    amount = typeof inv.montant_ttc === 'string' ? 
+                                        parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                                        parseFloat(inv.montant_ttc);
+                                } else if (inv.montant) {
+                                    const montantHT = typeof inv.montant === 'string' ? 
+                                        parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+                                        parseFloat(inv.montant);
+                                    const tauxTVA = parseFloat(inv.taux_tva || 0.20);
+                                    amount = montantHT * (1 + tauxTVA);
+                                }
+                                return sum + (isNaN(amount) ? 0 : amount);
+                            }, 0);
                             value = `${total.toFixed(2)} €`;
                         }
                         break;
