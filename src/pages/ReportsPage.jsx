@@ -376,8 +376,23 @@ const ReportsPage = () => {
     );
   };
   
-  const handlePrintReport = () => {
+  const handlePrintReport = async () => {
      if (!generatedReportDetails) return;
+     
+     // Récupérer les données réelles pour les graphiques
+     const now = new Date();
+     let startDate;
+     let endDate = now;
+     switch (timeRange) {
+         case 'last7days': startDate = subDays(now, 7); break;
+         case 'last30days': startDate = subDays(now, 30); break;
+         case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
+         case 'lastQuarter': startDate = subDays(now, 90); break;
+         case 'currentYear': startDate = startOfYear(now); break;
+         case 'allTime': startDate = new Date(2000,0,1); break;
+         default: startDate = subDays(now, 30);
+     }
+     
      const printWindow = window.open('', '_blank');
      printWindow.document.write('<html><head><title>Rapport Personnalisé</title>');
      printWindow.document.write(`
@@ -389,7 +404,10 @@ const ReportsPage = () => {
           th { background-color: #f2f2f2; }
           .report-header { text-align: center; margin-bottom: 30px; }
           .report-section { margin-bottom: 20px; page-break-inside: avoid; }
-          .chart-placeholder { width: 80%; height: 200px; background-color: #f0f0f0; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-style: italic; color: #888; border: 1px dashed #ccc; }
+          .data-table { width: 100%; margin: 15px 0; }
+          .data-table th { background-color: #5E35B1; color: white; }
+          .chart-section { background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 10px 0; }
+          .summary-box { background-color: #e8f4fd; padding: 10px; border-left: 4px solid #5E35B1; margin: 10px 0; }
            @media print { .no-print { display: none; } }
         </style>
      `);
@@ -401,15 +419,135 @@ const ReportsPage = () => {
      printWindow.document.write(`<p>Généré le: ${generatedReportDetails.generatedAt}</p>`);
      printWindow.document.write('</div>');
 
-     generatedReportDetails.pointsDetails.forEach(point => {
+     for (const point of generatedReportDetails.pointsDetails) {
         printWindow.document.write('<div class="report-section">');
         printWindow.document.write(`<h3>${point.label}</h3>`);
-        printWindow.document.write(`<p>Valeur: ${point.value || 'N/A'}</p>`);
-        printWindow.document.write('<div class="chart-placeholder">Visualisation graphique pour ' + point.label + ' (Simulation)</div>');
+        printWindow.document.write(`<div class="summary-box"><strong>Valeur: ${point.value || 'N/A'}</strong></div>`);
+        
+        // Ajouter des données réelles selon le type de point
+        try {
+          if (selectedReportType === 'customer_insights') {
+            if (point.id === 'total_customers') {
+              const { data: clientsData } = await supabase
+                .from('clients')
+                .select('nom, created_at')
+                .order('created_at', { ascending: false })
+                .limit(10);
+              
+              if (clientsData && clientsData.length > 0) {
+                printWindow.document.write('<div class="chart-section">');
+                printWindow.document.write('<h4>Derniers clients ajoutés:</h4>');
+                printWindow.document.write('<table class="data-table">');
+                printWindow.document.write('<thead><tr><th>Nom du Client</th><th>Date d\'ajout</th></tr></thead>');
+                printWindow.document.write('<tbody>');
+                clientsData.forEach(client => {
+                  const date = format(parseISO(client.created_at), "dd/MM/yyyy", { locale: fr });
+                  printWindow.document.write(`<tr><td>${client.nom}</td><td>${date}</td></tr>`);
+                });
+                printWindow.document.write('</tbody></table></div>');
+              }
+            } else if (point.id === 'new_customers_period') {
+              const { data: newClientsData } = await supabase
+                .from('clients')
+                .select('nom, created_at')
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString())
+                .order('created_at', { ascending: false });
+              
+              if (newClientsData && newClientsData.length > 0) {
+                printWindow.document.write('<div class="chart-section">');
+                printWindow.document.write('<h4>Nouveaux clients sur la période:</h4>');
+                printWindow.document.write('<table class="data-table">');
+                printWindow.document.write('<thead><tr><th>Nom du Client</th><th>Date d\'ajout</th></tr></thead>');
+                printWindow.document.write('<tbody>');
+                newClientsData.forEach(client => {
+                  const date = format(parseISO(client.created_at), "dd/MM/yyyy", { locale: fr });
+                  printWindow.document.write(`<tr><td>${client.nom}</td><td>${date}</td></tr>`);
+                });
+                printWindow.document.write('</tbody></table></div>');
+              }
+            }
+          } else if (selectedReportType === 'financial_summary') {
+            if (point.id === 'revenue' || point.id === 'paid_invoices') {
+              const { data: facturesData } = await supabase
+                .from('factures')
+                .select('numero_facture, montant_ttc, date_emission')
+                .eq('statut', 'Payée')
+                .gte('date_emission', startDate.toISOString())
+                .lte('date_emission', endDate.toISOString())
+                .order('date_emission', { ascending: false })
+                .limit(10);
+              
+              if (facturesData && facturesData.length > 0) {
+                printWindow.document.write('<div class="chart-section">');
+                printWindow.document.write('<h4>Factures payées récentes:</h4>');
+                printWindow.document.write('<table class="data-table">');
+                printWindow.document.write('<thead><tr><th>N° Facture</th><th>Montant TTC</th><th>Date</th></tr></thead>');
+                printWindow.document.write('<tbody>');
+                facturesData.forEach(facture => {
+                  const date = format(parseISO(facture.date_emission), "dd/MM/yyyy", { locale: fr });
+                  const montant = typeof facture.montant_ttc === 'string' ? 
+                    parseFloat(facture.montant_ttc.replace(',', '.')) : 
+                    (facture.montant_ttc || 0);
+                  printWindow.document.write(`<tr><td>${facture.numero_facture}</td><td>${montant.toFixed(2)} €</td><td>${date}</td></tr>`);
+                });
+                printWindow.document.write('</tbody></table></div>');
+              }
+            }
+          } else if (selectedReportType === 'operational_efficiency') {
+            if (point.id === 'completed_services' || point.id === 'pending_services') {
+              const { data: prestationsData } = await supabase
+                .from('prestations')
+                .select('id, type_prestation, statut, date_prestation')
+                .gte('date_prestation', startDate.toISOString())
+                .lte('date_prestation', endDate.toISOString())
+                .order('date_prestation', { ascending: false })
+                .limit(10);
+              
+              if (prestationsData && prestationsData.length > 0) {
+                printWindow.document.write('<div class="chart-section">');
+                printWindow.document.write('<h4>Prestations récentes:</h4>');
+                printWindow.document.write('<table class="data-table">');
+                printWindow.document.write('<thead><tr><th>Type</th><th>Statut</th><th>Date</th></tr></thead>');
+                printWindow.document.write('<tbody>');
+                prestationsData.forEach(prestation => {
+                  const date = format(parseISO(prestation.date_prestation), "dd/MM/yyyy", { locale: fr });
+                  printWindow.document.write(`<tr><td>${prestation.type_prestation}</td><td>${prestation.statut}</td><td>${date}</td></tr>`);
+                });
+                printWindow.document.write('</tbody></table></div>');
+              }
+            }
+          } else if (selectedReportType === 'vehicle_utilization') {
+            if (point.id === 'total_vehicles' || point.id === 'available_vehicles') {
+              const { data: vehiculesData } = await supabase
+                .from('vehicules')
+                .select('immatriculation, type, statut')
+                .order('immatriculation', { ascending: true });
+              
+              if (vehiculesData && vehiculesData.length > 0) {
+                printWindow.document.write('<div class="chart-section">');
+                printWindow.document.write('<h4>État des véhicules:</h4>');
+                printWindow.document.write('<table class="data-table">');
+                printWindow.document.write('<thead><tr><th>Immatriculation</th><th>Type</th><th>Statut</th></tr></thead>');
+                printWindow.document.write('<tbody>');
+                vehiculesData.forEach(vehicule => {
+                  printWindow.document.write(`<tr><td>${vehicule.immatriculation}</td><td>${vehicule.type}</td><td>${vehicule.statut}</td></tr>`);
+                });
+                printWindow.document.write('</tbody></table></div>');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération des données pour l\'impression:', error);
+          printWindow.document.write('<div class="chart-section">');
+          printWindow.document.write('<p><em>Données non disponibles pour cette visualisation</em></p>');
+          printWindow.document.write('</div>');
+        }
+        
         printWindow.document.write('</div>');
-     });
+     }
      
-     printWindow.document.write('<script>setTimeout(() => { window.print(); window.close(); }, 250);</script>');
+     printWindow.document.write('<script>setTimeout(() => { window.print(); window.close(); }, 500);</script>');
      printWindow.document.write('</body></html>');
      printWindow.document.close();
   };
