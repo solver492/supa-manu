@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,7 +86,7 @@ const DashboardPage = () => {
         .filter(service => {
           const serviceDate = service.date_prestation || service.date;
           if (!serviceDate) return false;
-          
+
           try {
             return isToday(parseISO(serviceDate));
           } catch (error) {
@@ -118,7 +117,7 @@ const DashboardPage = () => {
             const maintenanceDate = parseISO(maintenanceField);
             const immatriculation = vehicle.immatriculation || `ID-${vehicle.id}`;
             const type = vehicle.type || 'Véhicule';
-            
+
             if (isToday(maintenanceDate)) {
               currentAlerts.push({ 
                 id: `veh-maint-today-${vehicle.id}`, 
@@ -142,7 +141,7 @@ const DashboardPage = () => {
       factures.forEach(invoice => {
         const numero = invoice.numero || invoice.id;
         const client = invoice.nom_client || invoice.client || 'Client inconnu';
-        
+
         if (invoice.statut === 'En retard') {
           currentAlerts.push({ 
             id: `inv-late-${invoice.id}`, 
@@ -170,7 +169,7 @@ const DashboardPage = () => {
           }
         }
       });
-      
+
       // Si aucune alerte, ajouter un message positif
       if (currentAlerts.length === 0) {
         currentAlerts.push({ 
@@ -186,66 +185,55 @@ const DashboardPage = () => {
         return order[a.type] - order[b.type];
       }));
 
-      // Calculs KPI
-      const now = new Date();
-      const monthStart = startOfMonth(now);
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Semaine commence le lundi
+      // Calculs financiers - utiliser la même logique que la page Rapports
+      const paidInvoicesThisMonth = factures.filter(inv => {
+        const isPaid = inv.statut === 'Payée' || inv.statut === 'Payé';
+        const emissionField = inv.date_emission || inv.dateEmission || inv.date_creation;
+        if (!isPaid || !emissionField) return false;
 
-      // Chiffre d'affaires mensuel (factures payées)
-      const monthlyRevenue = factures
-        .filter(inv => {
-          const isPaid = inv.statut === 'Payée' || inv.statut === 'Payé';
-          const emissionField = inv.date_emission || inv.dateEmission || inv.date_creation;
-          if (!isPaid || !emissionField) return false;
-          
-          try {
-            return parseISO(emissionField) >= monthStart;
-          } catch (error) {
-            return false;
-          }
-        })
-        .reduce((sum, inv) => {
-          const montant = parseFloat(inv.montant_ttc || inv.montantTTC || inv.montant || 0);
-          return sum + montant;
-        }, 0);
-      
-      // Nouveaux clients ce mois
-      const newClientsThisMonth = clients
-        .filter(client => {
-          const creationField = client.date_creation || client.dateCreation || client.created_at;
-          if (!creationField) return false;
-          
-          try {
-            return parseISO(creationField) >= monthStart;
-          } catch (error) {
-            return false;
-          }
-        }).length;
+        try {
+          return parseISO(emissionField) >= monthStart;
+        } catch (error) {
+          return false;
+        }
+      });
 
-      // Prestations cette semaine
-      const servicesThisWeek = prestations
-        .filter(s => {
-          const serviceDate = s.date_prestation || s.date;
-          if (!serviceDate) return false;
-          
-          try {
-            const date = parseISO(serviceDate);
-            return date >= weekStart && date <= now;
-          } catch (error) {
-            return false;
-          }
-        }).length;
+      const totalRevenue = paidInvoicesThisMonth.reduce((sum, inv) => {
+        console.log("Processing invoice:", inv);
+        let amount = 0;
 
-      // Factures en attente
-      const pendingInvoices = factures
-        .filter(inv => inv.statut === 'En attente' || inv.statut === 'En retard').length;
+        // Utiliser la même logique que dans ReportsPage
+        if (inv.montant_ttc) {
+          amount = typeof inv.montant_ttc === 'string' ? 
+            parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+            parseFloat(inv.montant_ttc);
+        } else if (inv.montant_ht) {
+          const montantHT = typeof inv.montant_ht === 'string' ? 
+            parseFloat(inv.montant_ht.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+            parseFloat(inv.montant_ht);
+          const tauxTVA = parseFloat(inv.taux_tva || 0.20);
+          amount = montantHT * (1 + tauxTVA);
+        } else if (inv.montant) {
+          const montantHT = typeof inv.montant === 'string' ? 
+            parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
+            parseFloat(inv.montant);
+          const tauxTVA = parseFloat(inv.taux_tva || 0.20);
+          amount = montantHT * (1 + tauxTVA);
+        }
+
+        console.log("Calculated amount:", amount);
+        return sum + (isNaN(amount) ? 0 : amount);
+      }, 0);
+
+      console.log("Total revenue calculated:", totalRevenue);
+      console.log("Paid invoices this month:", paidInvoicesThisMonth.length);
 
       setKpiData([
         { 
           title: "Chiffre d'affaires (Mois)", 
-          value: `${monthlyRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €`, 
+          value: `${totalRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`, 
           icon: <TrendingUp className="h-6 w-6 text-primary" />, 
-          trend: "Factures payées ce mois" 
+          trend: `${paidInvoicesThisMonth.length} factures payées ce mois` 
         },
         { 
           title: "Nouveaux Clients (Mois)", 
@@ -269,21 +257,21 @@ const DashboardPage = () => {
 
     } catch (error) {
       console.error('Erreur lors du chargement des données du dashboard:', error);
-      
+
       // En cas d'erreur complète, essayer de récupérer depuis localStorage
       try {
         const storedServices = JSON.parse(localStorage.getItem('services') || '[]');
         const storedClients = JSON.parse(localStorage.getItem('clients') || '[]');
         const storedVehicles = JSON.parse(localStorage.getItem('vehicles') || '[]');
         const storedInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-        
+
         setDailyPlan([]);
         setAlerts([{ 
           id: 'error-connection', 
           type: 'error', 
           message: "Connexion à la base de données impossible. Données locales utilisées." 
         }]);
-        
+
         setKpiData([
           { title: "Chiffre d'affaires (Mois)", value: "0 €", icon: <TrendingUp className="h-6 w-6 text-primary" />, trend: "Données non disponibles" },
           { title: "Nouveaux Clients", value: storedClients.length.toString(), icon: <Users className="h-6 w-6 text-green-500" />, trend: "Données locales" },
