@@ -60,7 +60,8 @@ const FactureFormDialog = ({ isOpen, onClose, onSubmit, facture: initialFacture,
           date_prestation, 
           prix,
           nom_client,
-          clients(nom)
+          client_id,
+          clients(nom, id)
         `)
         .order('date_prestation', { ascending: false });
       if (error) throw error;
@@ -231,7 +232,15 @@ const FactureFormDialog = ({ isOpen, onClose, onSubmit, facture: initialFacture,
               <Label htmlFor="prestation_id">Prestation Associée</Label>
               <Select 
                 value={formData.prestation_id} 
-                onValueChange={(value) => setFormData({ ...formData, prestation_id: value })}
+                onValueChange={(value) => {
+                  const selectedPrestation = prestations.find(p => p.id === value);
+                  setFormData({ 
+                    ...formData, 
+                    prestation_id: value,
+                    montant: selectedPrestation?.prix?.toString() || formData.montant,
+                    client_id: selectedPrestation?.client_id || formData.client_id
+                  });
+                }}
               >
                 <SelectTrigger className="bg-[#2a2d2f] border-gray-700">
                   <SelectValue placeholder="Sélectionner une prestation (optionnel)" />
@@ -239,9 +248,14 @@ const FactureFormDialog = ({ isOpen, onClose, onSubmit, facture: initialFacture,
                 <SelectContent>
                   {prestations.map(prestation => {
                     const nomClient = prestation.nom_client || prestation.clients?.nom || 'Client inconnu';
+                    const datePrestation = prestation.date_prestation ? 
+                      format(new Date(prestation.date_prestation), 'dd/MM/yyyy', { locale: fr }) : 
+                      'Date inconnue';
+                    const prix = prestation.prix ? `${prestation.prix}€` : 'Prix non défini';
+                    
                     return (
                       <SelectItem key={prestation.id} value={prestation.id}>
-                        {prestation.id.substring(0, 8)}... ({nomClient}) - Client: {nomClient}
+                        {prestation.type_prestation} - {nomClient} ({datePrestation}) - {prix}
                       </SelectItem>
                     );
                   })}
