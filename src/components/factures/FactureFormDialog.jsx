@@ -54,7 +54,14 @@ const FactureFormDialog = ({ isOpen, onClose, onSubmit, facture: initialFacture,
     try {
       const { data, error } = await supabase
         .from('prestations')
-        .select('id, type_prestation, date_prestation, prix')
+        .select(`
+          id, 
+          type_prestation, 
+          date_prestation, 
+          prix,
+          nom_client,
+          clients(nom)
+        `)
         .order('date_prestation', { ascending: false });
       if (error) throw error;
       setPrestations(data || []);
@@ -230,11 +237,14 @@ const FactureFormDialog = ({ isOpen, onClose, onSubmit, facture: initialFacture,
                   <SelectValue placeholder="Sélectionner une prestation (optionnel)" />
                 </SelectTrigger>
                 <SelectContent>
-                  {prestations.map(prestation => (
-                    <SelectItem key={prestation.id} value={prestation.id}>
-                      {prestation.type_prestation} - {format(new Date(prestation.date_prestation), 'dd/MM/yyyy')}
-                    </SelectItem>
-                  ))}
+                  {prestations.map(prestation => {
+                    const nomClient = prestation.nom_client || prestation.clients?.nom || 'Client inconnu';
+                    return (
+                      <SelectItem key={prestation.id} value={prestation.id}>
+                        {prestation.id.substring(0, 8)}... ({nomClient}) - Client: {nomClient}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
