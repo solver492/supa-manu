@@ -1,0 +1,64 @@
+4chunk-LBRFZ3KG.js?v=9a651f1b:342  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ chunk-LBRFZ3KG.js?v=9a651f1b:342
+VM8 login:4  Warning: A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://reactjs.org/link/controlled-components
+    at input
+    at _c (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/components/ui/input.jsx:19:40)
+    at div
+    at div
+    at form
+    at div
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NNRT5S3J.js?v=9a651f1b:43:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-6TBCQVAW.js?v=9a651f1b:63:7
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NEHPMU6Z.js?v=9a651f1b:80:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NEHPMU6Z.js?v=9a651f1b:56:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NNRT5S3J.js?v=9a651f1b:43:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NBJBWQ26.js?v=9a651f1b:45:5
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-LBRFZ3KG.js?v=9a651f1b:236:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-LBRFZ3KG.js?v=9a651f1b:155:58
+    at Presence (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-AARNG6B2.js?v=9a651f1b:24:11)
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-LBRFZ3KG.js?v=9a651f1b:146:64
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NEHPMU6Z.js?v=9a651f1b:80:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NEHPMU6Z.js?v=9a651f1b:56:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-NNRT5S3J.js?v=9a651f1b:43:13
+    at https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-6TBCQVAW.js?v=9a651f1b:270:22
+    at Presence (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-AARNG6B2.js?v=9a651f1b:24:11)
+    at Provider (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-TLZQA7KG.js?v=9a651f1b:40:15)
+    at DialogPortal (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-LBRFZ3KG.js?v=9a651f1b:108:11)
+    at _c3 (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/components/ui/dialog.jsx:49:12)
+    at Provider (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-TLZQA7KG.js?v=9a651f1b:40:15)
+    at Dialog (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/chunk-LBRFZ3KG.js?v=9a651f1b:48:5)
+    at ServiceFormDialog (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/components/services/ServiceFormDialog.jsx:41:30)
+    at div
+    at MotionComponent (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/framer-motion.js?v=1e402a32:278:40)
+    at ServicesPage (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/pages/ServicesPage.jsx?t=1748255252129:45:35)
+    at RenderedRoute (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/react-router-dom.js?v=01710d2d:4103:5)
+    at Outlet (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/react-router-dom.js?v=01710d2d:4510:26)
+    at div
+    at MotionComponent (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/framer-motion.js?v=1e402a32:278:40)
+    at main
+    at div
+    at div
+    at Layout
+    at ProtectedRoute (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/App.jsx?t=1748253930033:35:27)
+    at RenderedRoute (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/react-router-dom.js?v=01710d2d:4103:5)
+    at Routes (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/react-router-dom.js?v=01710d2d:4574:5)
+    at PresenceChild (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/framer-motion.js?v=1e402a32:7103:24)
+    at AnimatePresence (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/framer-motion.js?v=1e402a32:7169:26)
+    at AppContent (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/App.jsx?t=1748253930033:58:20)
+    at ThemeProvider (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/contexts/ThemeContext.jsx:25:33)
+    at AuthProvider (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/src/contexts/AuthContext.jsx:21:32)
+    at App
+    at Router (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/react-router-dom.js?v=01710d2d:4517:15)
+    at BrowserRouter (https://0538ea50-51a6-416e-91dd-ae7abe4159d1-00-1p54kwxyv4m12.worf.replit.dev:5173/node_modules/.vite/deps/react-router-dom.js?v=01710d2d:5266:5)
+console.error @ VM8 login:4
+jfaheztemlnespvqwzlt.supabase.co/rest/v1/prestations?id=eq.99252f17-c1bd-40ae-a0a4-e33188b67061&select=*%2Cclients%28nom%29:1 
+            
+            
+            Failed to load resource: the server responded with a status of 400 ()
+VM8 login:4  Fetch error from https://jfaheztemlnespvqwzlt.supabase.co/rest/v1/prestations?id=eq.99252f17-c1bd-40ae-a0a4-e33188b67061&select=*%2Cclients%28nom%29: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"\""}
+console.error @ VM8 login:4
+jfaheztemlnespvqwzlt.supabase.co/rest/v1/prestations?id=eq.99252f17-c1bd-40ae-a0a4-e33188b67061&select=*%2Cclients%28nom%29:1 
+            
+            
+            Failed to load resource: the server responded with a status of 400 ()
+VM8 login:4  Fetch error from https://jfaheztemlnespvqwzlt.supabase.co/rest/v1/prestations?id=eq.99252f17-c1bd-40ae-a0a4-e33188b67061&select=*%2Cclients%28nom%29: {"code":"42703","details":null,"hint":null,"message":"record \"new\" has no field \"updated_at\""}
