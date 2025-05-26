@@ -14,7 +14,7 @@ import { fr } from 'date-fns/locale';
 
 const InvoiceViewDialog = ({ isOpen, onClose, invoice, onPrint, printRef }) => {
   if (!invoice) return null;
-  
+
   const getStatusClass = (status) => {
     switch (status) {
       case "Payée": return "status-paid";
@@ -41,7 +41,7 @@ const InvoiceViewDialog = ({ isOpen, onClose, invoice, onPrint, printRef }) => {
             Détails de la facture pour {clientName}. Statut: <span className={getStatusClass(invoice.statut)}>{invoice.statut}</span>
           </DialogDescription>
         </DialogHeader>
-        
+
         <div ref={printRef} id="invoice-print-content" className="invoice-box my-4 p-6 bg-white rounded-lg text-gray-800">
           <style type="text/css">
             {`
@@ -70,68 +70,74 @@ const InvoiceViewDialog = ({ isOpen, onClose, invoice, onPrint, printRef }) => {
             `}
           </style>
           <table cellPadding="0" cellSpacing="0">
-            <tr className="top">
-              <td colSpan="3">
-                <table>
-                  <tr>
-                    <td className="title">
-                      <h1 className="main-title">Mon Auxiliaire Déménagement</h1>
-                    </td>
-                    <td style={{textAlign: 'right'}}>
-                      Facture #: {invoice.numero_facture || invoice.id}<br />
-                      Date d'émission: {format(parseISO(invoice.date_emission), "dd/MM/yyyy", { locale: fr })}<br />
-                      Date d'échéance: {invoice.date_echeance ? format(parseISO(invoice.date_echeance), "dd/MM/yyyy", { locale: fr }) : 'N/A'}
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr className="information">
-              <td colSpan="3">
-                <table>
-                  <tr>
-                    <td className="company-details">
-                      Mon Auxiliaire Déménagement SARL<br />
-                      123 Rue de la Mobilité<br />
-                      75000 Paris, France<br />
-                      contact@auxiliaire-dem.fr
-                    </td>
-                    <td className="client-details" style={{textAlign: 'right'}}>
-                      <strong>Facturé à:</strong><br />
-                      {clientName}<br />
-                      {clientAddress}<br />
-                      {clientEmail}
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr className="heading">
-              <td>Description</td>
-              <td style={{textAlign: 'right'}}>Prix U. HT</td>
-              <td style={{textAlign: 'right'}}>Total HT</td>
-            </tr>
-            <tr className="item">
-              <td>
-                Prestation: {prestationType} (Réf: {prestationId})<br/>
-                <small>Pour: {clientName}</small>
-              </td>
-              <td style={{textAlign: 'right'}}>{Number(invoice.montant_ht || 0).toFixed(2)} €</td>
-              <td style={{textAlign: 'right'}}>{Number(invoice.montant_ht || 0).toFixed(2)} €</td>
-            </tr>
-            {/* Add more items here if needed */}
-            <tr className="total">
-              <td colSpan="2"></td>
-              <td style={{textAlign: 'right'}}>Sous-total HT: {Number(invoice.montant_ht || 0).toFixed(2)} €</td>
-            </tr>
-            <tr className="total">
-              <td colSpan="2"></td>
-              <td style={{textAlign: 'right'}}>TVA {(invoice.taux_tva*invoice.montant_ht).toFixed(2)} €</td>
-            </tr>
-            <tr className="total">
-              <td colSpan="2"></td>
-              <td style={{textAlign: 'right'}}><strong>Total TTC: {((1+invoice.taux_tva)*invoice.montant_ht).toFixed(2)} €</strong></td>
-            </tr>
+            <tbody>
+              <tr className="top">
+                <td colSpan="3">
+                  <table>
+                    <tbody>
+                      <tr>
+                        <td className="title">
+                          <h1 className="main-title">Mon Auxiliaire Déménagement</h1>
+                        </td>
+                        <td style={{textAlign: 'right'}}>
+                          Facture #: {invoice.numero_facture || invoice.id}<br />
+                          Date d'émission: {format(parseISO(invoice.date_emission), "dd/MM/yyyy", { locale: fr })}<br />
+                          Date d'échéance: {invoice.date_echeance ? format(parseISO(invoice.date_echeance), "dd/MM/yyyy", { locale: fr }) : 'N/A'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+              <tr className="information">
+                <td colSpan="3">
+                  <table>
+                    <tbody>
+                      <tr>
+                        <td className="company-details">
+                          Mon Auxiliaire Déménagement SARL<br />
+                          123 Rue de la Mobilité<br />
+                          75000 Paris, France<br />
+                          contact@auxiliaire-dem.fr
+                        </td>
+                        <td className="client-details" style={{textAlign: 'right'}}>
+                          <strong>Facturé à:</strong><br />
+                          {clientName}<br />
+                          {clientAddress}<br />
+                          {clientEmail}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+              <tr className="heading">
+                <td>Description</td>
+                <td style={{textAlign: 'right'}}>Prix U. HT</td>
+                <td style={{textAlign: 'right'}}>Total HT</td>
+              </tr>
+              <tr className="item">
+                <td>
+                  Prestation: {prestationType} (Réf: {prestationId})<br/>
+                  <small>Pour: {clientName}</small>
+                </td>
+                <td style={{textAlign: 'right'}}>{Number(invoice.montant_ht || 0).toFixed(2)} €</td>
+                <td style={{textAlign: 'right'}}>{Number(invoice.montant_ht || 0).toFixed(2)} €</td>
+              </tr>
+              {/* Add more items here if needed */}
+              <tr className="total">
+                <td colSpan="2"></td>
+                <td style={{textAlign: 'right'}}>Sous-total HT: {Number(invoice.montant_ht || 0).toFixed(2)} €</td>
+              </tr>
+              <tr className="total">
+                <td colSpan="2"></td>
+                <td style={{textAlign: 'right'}}>TVA {(invoice.taux_tva*invoice.montant_ht).toFixed(2)} €</td>
+              </tr>
+              <tr className="total">
+                <td colSpan="2"></td>
+                <td style={{textAlign: 'right'}}><strong>Total TTC: {((1+invoice.taux_tva)*invoice.montant_ht).toFixed(2)} €</strong></td>
+              </tr>
+            </tbody>
           </table>
           {invoice.notes && (
             <div style={{ marginTop: '20px', fontSize: '14px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
