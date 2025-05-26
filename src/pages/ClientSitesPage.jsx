@@ -95,7 +95,7 @@ const ClientSitesPage = () => {
       // Update existing client
       result = await supabase
         .from('clients')
-        .update({ ...clientData, updated_at: new Date().toISOString() })
+        .update(clientData)
         .eq('id', currentClient.id)
         .select();
     } else {
@@ -145,11 +145,11 @@ const ClientSitesPage = () => {
       enableSorting: false,
       enableHiding: false,
     },
-    { accessorKey: "nom", header: ({ column }) => <DataTableColumnHeader column={column} title="Nom du Site" /> },
+    { accessorKey: "nom", header: ({ column }) => <DataTableColumnHeader column={column} title="Nom du Client" /> },
     { accessorKey: "adresse", header: ({ column }) => <DataTableColumnHeader column={column} title="Adresse" /> },
-    { accessorKey: "ville", header: ({ column }) => <DataTableColumnHeader column={column} title="Ville" /> },
-    { accessorKey: "contact_principal", header: ({ column }) => <DataTableColumnHeader column={column} title="Contact Principal" /> },
+    { accessorKey: "contact", header: ({ column }) => <DataTableColumnHeader column={column} title="Contact" /> },
     { accessorKey: "telephone", header: ({ column }) => <DataTableColumnHeader column={column} title="Téléphone" /> },
+    { accessorKey: "email", header: ({ column }) => <DataTableColumnHeader column={column} title="Email" /> },
     {
       id: "actions",
       cell: ({ row }) => {
@@ -187,18 +187,18 @@ const ClientSitesPage = () => {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Sites Clients</h1>
-          <p className="text-muted-foreground">Gérez les informations de vos sites clients.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Clients</h1>
+          <p className="text-muted-foreground">Gérez les informations de vos clients.</p>
         </div>
         <Button onClick={handleAddClient} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-primary-foreground">
-          <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un Site Client
+          <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un Client
         </Button>
       </div>
 
       <Card className="shadow-xl border-none bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
         <CardHeader>
-          <CardTitle>Liste des Sites Clients</CardTitle>
-          <CardDescription>Consultez et gérez tous vos sites clients.</CardDescription>
+          <CardTitle>Liste des Clients</CardTitle>
+          <CardDescription>Consultez et gérez tous vos clients.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
