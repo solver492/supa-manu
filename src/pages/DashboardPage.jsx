@@ -23,81 +23,187 @@ const DashboardPage = () => {
   const [kpiData, setKpiData] = useState(demoKpiData);
   const navigate = useNavigate();
 
-  const loadDashboardData = useCallback(() => {
-    const storedServices = JSON.parse(localStorage.getItem('services') || '[]');
-    const storedClients = JSON.parse(localStorage.getItem('clients') || '[]');
-    const storedVehicles = JSON.parse(localStorage.getItem('vehicles') || '[]');
-    const storedInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+  const loadDashboardData = useCallback(async () => {
+    try {
+      // Récupérer les données des prestations
+      const prestationsResponse = await fetch('/api/prestations');
+      const prestations = prestationsResponse.ok ? await prestationsResponse.json() : [];
 
-    const todayServices = storedServices
-      .filter(service => isToday(parseISO(service.date)))
-      .sort((a, b) => parseISO(a.date) - parseISO(b.date));
-    setDailyPlan(todayServices);
+      // Récupérer les données des clients
+      const clientsResponse = await fetch('/api/clients');
+      const clients = clientsResponse.ok ? await clientsResponse.json() : [];
 
-    const currentAlerts = [];
+      // Récupérer les données des véhicules
+      const vehiculesResponse = await fetch('/api/vehicules');
+      const vehicules = vehiculesResponse.ok ? await vehiculesResponse.json() : [];
 
-    storedVehicles.forEach(vehicle => {
-      if (vehicle.prochaineMaintenance) {
-        const maintenanceDate = parseISO(vehicle.prochaineMaintenance);
-        if (isToday(maintenanceDate)) {
-          currentAlerts.push({ id: `veh-maint-today-${vehicle.id}`, type: 'warning', message: `Maintenance pour ${vehicle.immatriculation} (${vehicle.type}) due aujourd'hui.` });
-        } else if (isTomorrow(maintenanceDate)) {
-          currentAlerts.push({ id: `veh-maint-tomorrow-${vehicle.id}`, type: 'info', message: `Maintenance pour ${vehicle.immatriculation} (${vehicle.type}) prévue demain.` });
+      // Récupérer les données des factures
+      const facturesResponse = await fetch('/api/factures');
+      const factures = facturesResponse.ok ? await facturesResponse.json() : [];
+
+      // Fallback vers localStorage si les API ne fonctionnent pas
+      const storedServices = prestations.length > 0 ? prestations : JSON.parse(localStorage.getItem('services') || '[]');
+      const storedClients = clients.length > 0 ? clients : JSON.parse(localStorage.getItem('clients') || '[]');
+      const storedVehicles = vehicules.length > 0 ? vehicules : JSON.parse(localStorage.getItem('vehicles') || '[]');
+      const storedInvoices = factures.length > 0 ? factures : JSON.parse(localStorage.getItem('invoices') || '[]');
+
+      // Planning du jour
+      const todayServices = storedServices
+        .filter(service => {
+          const serviceDate = service.date_prestation || service.date;
+          return serviceDate && isToday(parseISO(serviceDate));
+        })
+        .sort((a, b) => {
+          const dateA = parseISO(a.date_prestation || a.date);
+          const dateB = parseISO(b.date_prestation || b.date);
+          return dateA - dateB;
+        });
+      setDailyPlan(todayServices);
+
+      // Alertes
+      const currentAlerts = [];
+
+      // Alertes véhicules
+      storedVehicles.forEach(vehicle => {
+        const maintenanceField = vehicle.prochaine_maintenance || vehicle.prochaineMaintenance;
+        if (maintenanceField) {
+          const maintenanceDate = parseISO(maintenanceField);
+          if (isToday(maintenanceDate)) {
+            currentAlerts.push({ 
+              id: `veh-maint-today-${vehicle.id}`, 
+              type: 'warning', 
+              message: `Maintenance pour ${vehicle.immatriculation} (${vehicle.type}) due aujourd'hui.` 
+            });
+          } else if (isTomorrow(maintenanceDate)) {
+            currentAlerts.push({ 
+              id: `veh-maint-tomorrow-${vehicle.id}`, 
+              type: 'info', 
+              message: `Maintenance pour ${vehicle.immatriculation} (${vehicle.type}) prévue demain.` 
+            });
+          }
         }
-      }
-    });
+      });
 
-    storedInvoices.forEach(invoice => {
-      if (invoice.statut === 'En retard') {
-        currentAlerts.push({ id: `inv-late-${invoice.id}`, type: 'error', message: `Facture ${invoice.id} (${invoice.client}) en retard de paiement.` });
-      } else if (invoice.statut === 'En attente' && isPast(parseISO(invoice.dateEcheance))) {
-         const daysOverdue = differenceInDays(new Date(), parseISO(invoice.dateEcheance));
-         if (daysOverdue > 0) {
-            currentAlerts.push({ id: `inv-overdue-${invoice.id}`, type: 'warning', message: `Facture ${invoice.id} (${invoice.client}) échue depuis ${daysOverdue} jour(s).` });
-         }
-      }
-    });
-    
-    if (isDemoMode) {
-      setAlerts([
-        { id: 'demo-warn-1', type: 'warning', message: "Véhicule DEMO-01 - Maintenance prévue demain (Mode Démo)." },
-        { id: 'demo-err-1', type: 'error', message: "Facture #DEMO999 en retard (Mode Démo)." },
-        { id: 'demo-ok-1', type: 'success', message: "Aucune nouvelle alerte critique (Mode Démo)." },
-      ].sort((a,b) => {
-        const order = { error: 0, warning: 1, success: 2, info: 3 };
-        return order[a.type] - order[b.type];
-      }));
-      setKpiData(demoKpiData);
-    } else {
-      if(currentAlerts.length === 0) {
-        currentAlerts.push({ id: 'real-ok-1', type: 'success', message: "Aucune alerte critique pour le moment." });
-      }
-      setAlerts(currentAlerts.sort((a,b) => {
-        const order = { error: 0, warning: 1, success: 2, info: 3 };
-        return order[a.type] - order[b.type];
-      }));
-
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-
-
-      const monthlyRevenue = storedInvoices
-        .filter(inv => inv.statut === 'Payée' && parseISO(inv.dateEmission) >= startOfMonth)
-        .reduce((sum, inv) => sum + inv.montantTTC, 0);
+      // Alertes factures
+      storedInvoices.forEach(invoice => {
+        if (invoice.statut === 'En retard') {
+          currentAlerts.push({ 
+            id: `inv-late-${invoice.id}`, 
+            type: 'error', 
+            message: `Facture ${invoice.numero || invoice.id} (${invoice.nom_client || invoice.client}) en retard de paiement.` 
+          });
+        } else if (invoice.statut === 'En attente') {
+          const echeanceField = invoice.date_echeance || invoice.dateEcheance;
+          if (echeanceField && isPast(parseISO(echeanceField))) {
+            const daysOverdue = differenceInDays(new Date(), parseISO(echeanceField));
+            if (daysOverdue > 0) {
+              currentAlerts.push({ 
+                id: `inv-overdue-${invoice.id}`, 
+                type: 'warning', 
+                message: `Facture ${invoice.numero || invoice.id} (${invoice.nom_client || invoice.client}) échue depuis ${daysOverdue} jour(s).` 
+              });
+            }
+          }
+        }
+      });
       
-      const newClientsThisMonth = storedClients.length; // Simplified, assume all clients are new this month
+      if (isDemoMode) {
+        setAlerts([
+          { id: 'demo-warn-1', type: 'warning', message: "Véhicule DEMO-01 - Maintenance prévue demain (Mode Démo)." },
+          { id: 'demo-err-1', type: 'error', message: "Facture #DEMO999 en retard (Mode Démo)." },
+          { id: 'demo-ok-1', type: 'success', message: "Aucune nouvelle alerte critique (Mode Démo)." },
+        ].sort((a,b) => {
+          const order = { error: 0, warning: 1, success: 2, info: 3 };
+          return order[a.type] - order[b.type];
+        }));
+        setKpiData(demoKpiData);
+      } else {
+        if(currentAlerts.length === 0) {
+          currentAlerts.push({ id: 'real-ok-1', type: 'success', message: "Aucune alerte critique pour le moment." });
+        }
+        setAlerts(currentAlerts.sort((a,b) => {
+          const order = { error: 0, warning: 1, success: 2, info: 3 };
+          return order[a.type] - order[b.type];
+        }));
 
-      const servicesThisWeek = storedServices
-        .filter(s => parseISO(s.date) >= startOfWeek && parseISO(s.date) <= new Date()).length;
+        // Calculs KPI
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
 
-      const pendingInvoices = storedInvoices.filter(inv => inv.statut === 'En attente' || inv.statut === 'En retard').length;
+        // Chiffre d'affaires mensuel (factures payées)
+        const monthlyRevenue = storedInvoices
+          .filter(inv => {
+            const isPaid = inv.statut === 'Payée' || inv.statut === 'Payé';
+            const emissionField = inv.date_emission || inv.dateEmission || inv.date_creation;
+            return isPaid && emissionField && parseISO(emissionField) >= startOfMonth;
+          })
+          .reduce((sum, inv) => {
+            const montant = inv.montant_ttc || inv.montantTTC || inv.montant || 0;
+            return sum + parseFloat(montant);
+          }, 0);
+        
+        // Nouveaux clients ce mois
+        const newClientsThisMonth = storedClients
+          .filter(client => {
+            const creationField = client.date_creation || client.dateCreation;
+            return creationField && parseISO(creationField) >= startOfMonth;
+          }).length;
 
+        // Prestations cette semaine
+        const servicesThisWeek = storedServices
+          .filter(s => {
+            const serviceDate = s.date_prestation || s.date;
+            return serviceDate && parseISO(serviceDate) >= startOfWeek && parseISO(serviceDate) <= new Date();
+          }).length;
+
+        // Factures en attente
+        const pendingInvoices = storedInvoices
+          .filter(inv => inv.statut === 'En attente' || inv.statut === 'En retard').length;
+
+        setKpiData([
+          { 
+            title: "Chiffre d'affaires (Mois)", 
+            value: `${monthlyRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €`, 
+            icon: <TrendingUp className="h-6 w-6 text-primary" />, 
+            trend: "Factures payées ce mois" 
+          },
+          { 
+            title: "Nouveaux Clients (Mois)", 
+            value: `${newClientsThisMonth}`, 
+            icon: <Users className="h-6 w-6 text-green-500" />, 
+            trend: `Total clients: ${storedClients.length}` 
+          },
+          { 
+            title: "Prestations (Semaine)", 
+            value: `${servicesThisWeek}`, 
+            icon: <Truck className="h-6 w-6 text-blue-500" />, 
+            trend: `Total: ${storedServices.length}` 
+          },
+          { 
+            title: "Factures en Attente", 
+            value: `${pendingInvoices}`, 
+            icon: <FileText className="h-6 w-6 text-orange-500" />, 
+            trend: `Total factures: ${storedInvoices.length}` 
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des données du dashboard:', error);
+      // En cas d'erreur, utiliser les données localStorage
+      const storedServices = JSON.parse(localStorage.getItem('services') || '[]');
+      const storedClients = JSON.parse(localStorage.getItem('clients') || '[]');
+      const storedVehicles = JSON.parse(localStorage.getItem('vehicles') || '[]');
+      const storedInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+      
+      setDailyPlan([]);
+      setAlerts([{ id: 'error-1', type: 'error', message: "Erreur lors du chargement des données." }]);
       setKpiData([
-        { title: "Chiffre d'affaires (Mois)", value: `${monthlyRevenue.toFixed(2)} €`, icon: <TrendingUp className="h-6 w-6 text-primary" />, trend: "Données réelles" },
-        { title: "Nouveaux Clients (Total)", value: `${newClientsThisMonth}`, icon: <Users className="h-6 w-6 text-green-500" />, trend: "Données réelles" },
-        { title: "Prestations (Semaine en cours)", value: `${servicesThisWeek}`, icon: <Truck className="h-6 w-6 text-blue-500" />, trend: "Données réelles" },
-        { title: "Factures en Attente", value: `${pendingInvoices}`, icon: <FileText className="h-6 w-6 text-orange-500" />, trend: "Données réelles" },
+        { title: "Chiffre d'affaires (Mois)", value: "0 €", icon: <TrendingUp className="h-6 w-6 text-primary" />, trend: "Erreur de chargement" },
+        { title: "Nouveaux Clients", value: "0", icon: <Users className="h-6 w-6 text-green-500" />, trend: "Erreur de chargement" },
+        { title: "Prestations (Semaine)", value: "0", icon: <Truck className="h-6 w-6 text-blue-500" />, trend: "Erreur de chargement" },
+        { title: "Factures en Attente", value: "0", icon: <FileText className="h-6 w-6 text-orange-500" />, trend: "Erreur de chargement" },
       ]);
     }
   }, [isDemoMode]);
@@ -182,10 +288,24 @@ const DashboardPage = () => {
                   {dailyPlan.map(service => (
                     <li key={service.id} className="flex justify-between items-center p-3 bg-muted/50 dark:bg-muted/20 rounded-md hover:bg-muted dark:hover:bg-muted/40 transition-colors">
                       <div>
-                        <p className="font-semibold text-foreground">{service.client} - {service.type}</p>
-                        <p className="text-xs text-muted-foreground">{service.equipe ? `Équipe: ${service.equipe}` : 'Équipe non assignée'}</p>
+                        <p className="font-semibold text-foreground">
+                          {service.nom_client || service.client} - {service.type_prestation || service.type}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {service.equipe_assignee || service.equipe ? 
+                            `Équipe: ${service.equipe_assignee || service.equipe}` : 
+                            'Équipe non assignée'
+                          }
+                        </p>
+                        {service.adresse_depart && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Départ: {service.adresse_depart}
+                          </p>
+                        )}
                       </div>
-                      <span className="text-sm text-primary font-semibold">{format(parseISO(service.date), "HH:mm")}</span>
+                      <span className="text-sm text-primary font-semibold">
+                        {format(parseISO(service.date_prestation || service.date), "HH:mm")}
+                      </span>
                     </li>
                   ))}
                 </ul>
