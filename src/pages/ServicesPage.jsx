@@ -221,7 +221,7 @@ const ServicesPage = () => {
               <p className="text-muted-foreground">Chargement des prestations...</p>
             </div>
           ) : (
-            <DataTable columns={columns} data={services} filterColumn="clients.nom" />
+            <DataTable columns={columns} data={services} filterColumn="nom_client" />
           )}
         </CardContent>
       </Card>
