@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,31 @@ import {
 import { format, parseISO } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { Users, MapPin, Calendar, Clock, Phone, Mail, FileText, Euro } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 const ServiceViewDialog = ({ isOpen, onClose, service }) => {
+  const [clientData, setClientData] = useState(null);
+
+  useEffect(() => {
+    const fetchClientData = async () => {
+      if (service?.client_id) {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', service.client_id)
+          .single();
+          
+        if (!error && data) {
+          setClientData(data);
+        }
+      }
+    };
+    
+    if (service?.client_id) {
+      fetchClientData();
+    }
+  }, [service]);
+
   if (!service) return null;
 
   const formatDate = (dateString) => {
@@ -50,6 +73,9 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
               </span>
             </div>
           </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Client: {clientData?.nom || "Non spécifié"}
+          </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-3 py-3">
@@ -61,15 +87,30 @@ const ServiceViewDialog = ({ isOpen, onClose, service }) => {
                 Informations Client
               </h3>
               <div className="space-y-2">
-                <p className="text-sm font-medium">{service.nom_client}</p>
-                <p className="text-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                  <Phone className="h-4 w-4" />
-                  {service.telephone_client || "Non spécifié"}
-                </p>
-                <p className="text-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                  <Mail className="h-4 w-4" />
-                  {service.email_client || "Non spécifié"}
-                </p>
+                <div className="p-3 bg-primary/5 rounded-md">
+                  <h4 className="text-sm font-medium mb-2">Client (Site)</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {clientData?.nom || "Non spécifié"}
+                  </p>
+                  {clientData && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {clientData.adresse || "Adresse non spécifiée"}
+                    </p>
+                  )}
+                </div>
+                <div className="p-3 bg-primary/5 rounded-md">
+                  <h4 className="text-sm font-medium mb-2">Contact</h4>
+                  <div className="space-y-1">
+                    <p className="text-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                      <Phone className="h-4 w-4" />
+                      {service.telephone_client || "Non spécifié"}
+                    </p>
+                    <p className="text-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                      <Mail className="h-4 w-4" />
+                      {service.email_client || "Non spécifié"}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 

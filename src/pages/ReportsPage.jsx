@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { BarChart as BarChartIcon, LineChart as LineChartIcon, PieChart as PieChartIcon, Users, Truck, DollarSign, TrendingUp, Download, Settings2, Printer } from 'lucide-react';
+import { BarChart as BarChartIcon, LineChart as LineChartIcon, PieChart as PieChartIcon, Users, Truck, DollarSign, TrendingUp, Download, Settings2, Printer, BarChart2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   Select,
@@ -108,11 +108,170 @@ const ReportCard = ({ title, value, icon, description, chartType, data }) => {
   );
 };
 
+const ManpowerDistributionWidget = ({ data, timeRange }) => {
+  const [selectedSite, setSelectedSite] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isCompareMode, setIsCompareMode] = useState(false);
+  const itemsPerPage = 10;
+
+  if (!data?.data || !data.data.length) {
+    return (
+      <Card className="col-span-full h-[400px]">
+        <CardHeader>
+          <CardTitle>Distribution Manutentionnaires</CardTitle>
+          <CardDescription>Chargement des données...</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[300px] flex items-center justify-center">
+          <Users className="h-16 w-16 text-primary/30 animate-pulse" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalPages = Math.ceil(data.data.length / itemsPerPage);
+  const paginatedData = data.data.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
+
+  return (
+    <Card className="col-span-full h-[400px]">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Distribution Manutentionnaires</CardTitle>
+            <CardDescription>
+              {data.totalManpower} manutentionnaires répartis sur {data.totalSites} sites
+            </CardDescription>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCompareMode(!isCompareMode)}
+            >
+              {isCompareMode ? (
+                <BarChart2 className="h-4 w-4 mr-2" />
+              ) : (
+                <TrendingUp className="h-4 w-4 mr-2" />
+              )}
+              {isCompareMode ? "Vue Barres" : "Vue Comparative"}
+            </Button>
+            <Select 
+              value={selectedSite} 
+              onValueChange={setSelectedSite}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Tous les sites" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>Tous les sites</SelectItem>
+                {data.data.map(item => (
+                  <SelectItem key={item.name} value={item.name}>
+                    {item.name} ({item.value})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            {isCompareMode ? (
+              <LineChart data={selectedSite ? paginatedData.filter(d => d.name === selectedSite) : paginatedData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-background p-2 rounded-lg border shadow-lg">
+                          <p className="font-bold">{data.name}</p>
+                          <p>{data.value} manutentionnaires</p>
+                          <p className="text-xs text-muted-foreground">
+                            {((data.value / data.totalManpower) * 100).toFixed(1)}% du total
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Line type="monotone" dataKey="value" stroke="#8884d8" />
+              </LineChart>
+            ) : (
+              <BarChart data={selectedSite ? paginatedData.filter(d => d.name === selectedSite) : paginatedData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-background p-2 rounded-lg border shadow-lg">
+                          <p className="font-bold">{data.name}</p>
+                          <p>{data.value} manutentionnaires</p>
+                          <p className="text-xs text-muted-foreground">
+                            {((data.value / data.totalManpower) * 100).toFixed(1)}% du total
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar dataKey="value" fill="#8884d8">
+                  {paginatedData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={COLORS[index % COLORS.length]}
+                      opacity={selectedSite ? (entry.name === selectedSite ? 1 : 0.3) : 1}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 0}
+              onClick={() => setCurrentPage(p => p - 1)}
+            >
+              Précédent
+            </Button>
+            <span className="flex items-center px-2">
+              Page {currentPage + 1} sur {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages - 1}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
+              Suivant
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const reportTypes = [
   { value: "financial_summary", label: "Résumé Financier" },
   { value: "operational_efficiency", label: "Efficacité Opérationnelle" },
   { value: "customer_insights", label: "Aperçu Clientèle" },
   { value: "vehicle_utilization", label: "Utilisation Véhicules" },
+  { value: "manpower_distribution", label: "Distribution des Manutentionnaires" },
 ];
 
 const dataPointsOptions = {
@@ -146,6 +305,10 @@ const dataPointsOptions = {
     { id: "maintenance_due", label: "Véhicules en Maintenance" },
     { id: "utilization_rate", label: "Taux d'Utilisation" }
   ],
+  manpower_distribution: [
+    { id: "manpower_by_client", label: "Manutentionnaires par Site Client" },
+    { id: "total_manpower", label: "Total des Manutentionnaires" },
+  ],
 };
 
 const timeRangeLabels = {
@@ -158,699 +321,453 @@ const timeRangeLabels = {
 }
 
 const ReportsPage = () => {
-  const [timeRange, setTimeRange] = useState("last30days");
-  const [selectedReportType, setSelectedReportType] = useState(reportTypes[0].value);
-  const [selectedDataPoints, setSelectedDataPoints] = useState([dataPointsOptions[reportTypes[0].value][0].id]);
-  const [exportFormat, setExportFormat] = useState("pdf");
   const { toast } = useToast();
-  
+  const [timeRange, setTimeRange] = useState('last30days');
   const [reportData, setReportData] = useState({
-    financial: { 
-      title: "Chiffre d'Affaires (Payé)", 
-      value: "0 €", 
-      icon: <DollarSign />, 
-      description: "Chargement...", 
-      chartType: 'line',
-      data: []
-    },
-    operational: { 
-      title: "Prestations Terminées", 
-      value: "0", 
-      icon: <Truck />, 
-      description: "Chargement...", 
-      chartType: 'bar',
-      data: []
-    },
-    customer: { 
-      title: "Total Clients", 
-      value: "0", 
-      icon: <Users />, 
-      description: "Chargement...", 
-      chartType: 'line',
-      data: []
-    },
-    vehicles: { 
-      title: "Véhicules Disponibles", 
-      value: "0/0", 
-      icon: <Truck />, 
-      description: "Chargement...", 
-      chartType: 'pie',
-      data: []
-    }
+    financial: null,
+    operational: null,
+    customer: null,
+    vehicles: null,
+    manpower: null
+  });
+  const [loading, setLoading] = useState({
+    financial: true,
+    operational: true,
+    customer: true,
+    vehicles: true,
+    manpower: true
   });
 
+  const [selectedReportType, setSelectedReportType] = useState("");
+  const [selectedDataPoints, setSelectedDataPoints] = useState([]);
+  const [exportFormat, setExportFormat] = useState("pdf");
   const [generatedReportDetails, setGeneratedReportDetails] = useState(null);
 
+  const handleDataPointChange = useCallback((pointId) => {
+    setSelectedDataPoints(current => 
+      current.includes(pointId) 
+        ? current.filter(id => id !== pointId)
+        : [...current, pointId]
+    );
+  }, []);
 
-  const fetchDataForReports = useCallback(async () => {
-    const now = new Date();
-    let startDate;
-    let endDate = now;
+  useEffect(() => {
+    const fetchManpowerData = async () => {
+      try {
+        setLoading(prev => ({ ...prev, manpower: true }));
+        const now = new Date();
+        let startDate;
+        let endDate = now;
+        
+        switch (timeRange) {
+          case 'last7days': startDate = subDays(now, 7); break;
+          case 'last30days': startDate = subDays(now, 30); break;
+          case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
+          case 'lastQuarter': startDate = subDays(now, 90); break;
+          case 'currentYear': startDate = startOfYear(now); break;
+          case 'allTime': startDate = new Date(2000, 0, 1); break;
+          default: startDate = subDays(now, 30);
+        }
 
-    switch (timeRange) {
-        case 'last7days': startDate = subDays(now, 7); break;
-        case 'last30days': startDate = subDays(now, 30); break;
-        case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
-        case 'lastQuarter': startDate = subDays(now, 90); break;
-        case 'currentYear': startDate = startOfYear(now); break;
-        case 'allTime': startDate = new Date(2000,0,1); break;
-        default: startDate = subDays(now, 30);
-    }
+        // 1. D'abord, récupérer tous les sites clients
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('id, nom')
+          .order('nom');  // Trier par nom
 
-    try {
-        // Requêtes parallèles pour optimiser les performances
-        const [invoicesResponse, servicesResponse, clientsResponse, vehiclesResponse, employeesResponse] = await Promise.all([
-            // 1. Chiffre d'Affaires (Payé)
-            supabase
-                .from('factures')
-                .select('montant_ttc, montant_ht, montant, taux_tva, statut, date_emission, numero_facture')
-                .eq('statut', 'Payée')
-                .gte('date_emission', startDate.toISOString())
-                .lte('date_emission', endDate.toISOString()),
-            
-            // 2. Prestations
-            supabase
-                .from('prestations')
-                .select('id, statut, date_prestation')
-                .gte('date_prestation', startDate.toISOString())
-                .lte('date_prestation', endDate.toISOString()),
-            
-            // 3. Clients
-            supabase
-                .from('clients')
-                .select('id, nom, created_at')
-                .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString()),
-            
-            // 4. Véhicules
-            supabase
-                .from('vehicules')
-                .select('id, statut, type'),
-            
-            // 5. Employés
-            supabase
-                .from('employes')
-                .select('id, nom, poste')
-        ]);
+        if (clientsError) throw clientsError;
 
-        // Vérification des erreurs
-        if (invoicesResponse.error) throw invoicesResponse.error;
-        if (servicesResponse.error) throw servicesResponse.error;
-        if (clientsResponse.error) throw clientsResponse.error;
-        if (vehiclesResponse.error) throw vehiclesResponse.error;
-        if (employeesResponse.error) throw employeesResponse.error;
+        console.log('Sites clients trouvés:', clientsData);
 
-        console.log("Invoices data:", invoicesResponse.data);
-        console.log("Services data:", servicesResponse.data);
-        console.log("Clients data:", clientsResponse.data);
-        console.log("Vehicles data:", vehiclesResponse.data);
+        // 2. Ensuite, récupérer toutes les prestations
+        const { data: prestationsData, error: prestationsError } = await supabase
+          .from('prestations')
+          .select(`
+            nombre_manutentionnaires,
+            client_id,
+            date_prestation,
+            clients (
+              id,
+              nom
+            )
+          `);  // Enlever le filtre de date pour voir toutes les prestations
 
-        // Calculs financiers
-        const totalRevenue = invoicesResponse.data?.reduce((sum, inv) => {
-            console.log("Processing invoice:", inv);
-            let amount = 0;
-            
-            // Essayer différents champs de montant dans l'ordre de priorité
-            if (inv.montant_ttc) {
-                amount = typeof inv.montant_ttc === 'string' ? 
-                    parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                    parseFloat(inv.montant_ttc);
-            } else if (inv.montant_ht) {
-                // Utiliser montant_ht + TVA
-                const montantHT = typeof inv.montant_ht === 'string' ? 
-                    parseFloat(inv.montant_ht.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                    parseFloat(inv.montant_ht);
-                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
-                amount = montantHT * (1 + tauxTVA);
-            } else if (inv.montant) {
-                // Si pas de montant_ttc ni montant_ht, calculer à partir du montant (HT)
-                const montantHT = typeof inv.montant === 'string' ? 
-                    parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                    parseFloat(inv.montant);
-                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
-                amount = montantHT * (1 + tauxTVA);
+        if (prestationsError) {
+          console.error('Erreur prestations:', prestationsError);
+          throw prestationsError;
+        }
+
+        console.log('Prestations trouvées:', prestationsData);
+
+        // 3. Créer un map pour tous les sites clients avec leurs stats
+        const clientManpowerMap = {};
+        
+        // Initialiser TOUS les sites clients avec 0 manutentionnaires
+        clientsData.forEach(client => {
+          clientManpowerMap[client.id] = {
+            name: client.nom,
+            total: 0,
+            count: 0
+          };
+        });
+
+        // Debug: afficher le map initial
+        console.log('Map initial:', clientManpowerMap);
+
+        // Ajouter les manutentionnaires pour chaque prestation
+        prestationsData.forEach(p => {
+          if (p.client_id) {
+            if (!clientManpowerMap[p.client_id]) {
+              console.warn(`Client ID ${p.client_id} non trouvé dans la table clients`);
+              return;
             }
             
-            console.log("Calculated amount:", amount);
-            console.log("Invoice fields:", { montant_ttc: inv.montant_ttc, montant_ht: inv.montant_ht, montant: inv.montant, taux_tva: inv.taux_tva });
-            return sum + (isNaN(amount) ? 0 : amount);
-        }, 0) || 0;
-        
-        console.log("Total revenue calculated:", totalRevenue);
+            console.log(`Ajout prestation pour ${clientManpowerMap[p.client_id].name}:`, {
+              manutentionnaires: p.nombre_manutentionnaires,
+              date: p.date_prestation
+            });
+            
+            // Toujours incrémenter le compteur de prestations
+            clientManpowerMap[p.client_id].count += 1;
+            
+            // Ajouter les manutentionnaires si présents
+            if (p.nombre_manutentionnaires) {
+              clientManpowerMap[p.client_id].total += p.nombre_manutentionnaires;
+            }
+          }
+        });
 
-        // Calculs opérationnels
+        // Debug: afficher le map final
+        console.log('Map final:', clientManpowerMap);
+
+        // 4. Convertir en format pour le graphique - GARDER TOUS LES SITES
+        const chartData = Object.entries(clientManpowerMap)
+          .map(([_, data]) => ({
+            name: data.name,
+            value: data.total,
+            average: data.count > 0 ? data.total / data.count : 0,
+            totalServices: data.count
+          }))
+          .sort((a, b) => b.value - a.value);
+
+        console.log('Données du graphique:', chartData);
+
+        setReportData(prev => ({
+          ...prev,
+          manpower: {
+            data: chartData,
+            totalManpower: chartData.reduce((acc, item) => acc + item.value, 0),
+            totalSites: chartData.length
+          }
+        }));
+      } catch (error) {
+        console.error('Error fetching manpower data:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les données de distribution des manutentionnaires",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(prev => ({ ...prev, manpower: false }));
+      }
+    };
+
+    const fetchOtherData = async () => {
+      try {
+        setLoading(prev => ({ 
+          ...prev, 
+          financial: true,
+          operational: true,
+          customer: true,
+          vehicles: true
+        }));
+
+        const now = new Date();
+        let startDate;
+        let endDate = now;
+        
+        switch (timeRange) {
+          case 'last7days': startDate = subDays(now, 7); break;
+          case 'last30days': startDate = subDays(now, 30); break;
+          case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
+          case 'lastQuarter': startDate = subDays(now, 90); break;
+          case 'currentYear': startDate = startOfYear(now); break;
+          case 'allTime': startDate = new Date(2000, 0, 1); break;
+          default: startDate = subDays(now, 30);
+        }
+
+        // Requêtes parallèles pour optimiser les performances
+        const [invoicesResponse, servicesResponse, clientsResponse, vehiclesResponse] = await Promise.all([
+          // 1. Chiffre d'Affaires
+          supabase
+            .from('factures')
+            .select('montant_ttc, montant_ht, date_emission')
+            .gte('date_emission', startDate.toISOString())
+            .lte('date_emission', endDate.toISOString()),
+          
+          // 2. Prestations
+          supabase
+            .from('prestations')
+            .select('id, statut, date_prestation')
+            .gte('date_prestation', startDate.toISOString())
+            .lte('date_prestation', endDate.toISOString()),
+          
+          // 3. Clients
+          supabase
+            .from('clients')
+            .select('id, created_at'),
+          
+          // 4. Véhicules
+          supabase
+            .from('vehicules')
+            .select('id, statut')
+        ]);
+
+        // Traitement des données financières
+        const revenueData = invoicesResponse.data?.reduce((acc, inv) => {
+          const date = format(parseISO(inv.date_emission), 'dd/MM');
+          const amount = parseFloat(inv.montant_ttc || inv.montant_ht || 0);
+          
+          const existing = acc.find(item => item.name === date);
+          if (existing) {
+            existing.value += amount;
+          } else {
+            acc.push({ name: date, value: amount });
+          }
+          return acc;
+        }, []) || [];
+
+        const totalRevenue = revenueData.reduce((sum, item) => sum + item.value, 0);
+
+        // Traitement des données des prestations
         const completedServices = servicesResponse.data?.filter(s => s.statut === 'Terminée').length || 0;
         const totalServices = servicesResponse.data?.length || 0;
-        
-        // Calculs clients
-        const totalClientsAll = await supabase.from('clients').select('id', { count: 'exact', head: true });
-        const totalClients = totalClientsAll.count || 0;
-        const newClientsInPeriod = clientsResponse.data?.length || 0;
 
-        // Calculs véhicules
+        const servicesData = servicesResponse.data?.reduce((acc, service) => {
+          const date = format(parseISO(service.date_prestation), 'dd/MM');
+          const existing = acc.find(item => item.name === date);
+          if (existing) {
+            existing.value += 1;
+          } else {
+            acc.push({ name: date, value: 1 });
+          }
+          return acc;
+        }, []) || [];
+
+        // Traitement des données clients
+        const totalClients = clientsResponse.data?.length || 0;
+        const newClients = clientsResponse.data?.filter(
+          c => parseISO(c.created_at) >= startDate
+        ).length || 0;
+
+        // Traitement des données véhicules
         const totalVehicles = vehiclesResponse.data?.length || 0;
         const availableVehicles = vehiclesResponse.data?.filter(v => v.statut === 'Disponible').length || 0;
 
-        // Fallback: essayer de récupérer toutes les factures si aucune payée n'est trouvée
-        let allInvoicesForChart = invoicesResponse.data;
-        if (!allInvoicesForChart || allInvoicesForChart.length === 0) {
-            console.log("No paid invoices found, trying to get all invoices for chart...");
-            const allInvoicesResponse = await supabase
-                .from('factures')
-                .select('montant_ttc, montant_ht, montant, taux_tva, statut, date_emission')
-                .gte('date_emission', startDate.toISOString())
-                .lte('date_emission', endDate.toISOString())
-                .limit(10);
-            allInvoicesForChart = allInvoicesResponse.data || [];
-        }
-
-        // Données pour les graphiques
-        const revenueChartData = allInvoicesForChart?.reduce((acc, inv) => {
-            const date = format(parseISO(inv.date_emission), 'dd/MM');
-            
-            // Même logique de calcul que pour le total
-            let amount = 0;
-            if (inv.montant_ttc) {
-                amount = typeof inv.montant_ttc === 'string' ? 
-                    parseFloat(inv.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                    parseFloat(inv.montant_ttc);
-            } else if (inv.montant_ht) {
-                const montantHT = typeof inv.montant_ht === 'string' ? 
-                    parseFloat(inv.montant_ht.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                    parseFloat(inv.montant_ht);
-                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
-                amount = montantHT * (1 + tauxTVA);
-            } else if (inv.montant) {
-                const montantHT = typeof inv.montant === 'string' ? 
-                    parseFloat(inv.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                    parseFloat(inv.montant);
-                const tauxTVA = parseFloat(inv.taux_tva || 0.20);
-                amount = montantHT * (1 + tauxTVA);
-            }
-            
-            if (!isNaN(amount) && amount > 0) {
-                const existing = acc.find(item => item.name === date);
-                if (existing) {
-                    existing.value += amount;
-                } else {
-                    acc.push({ name: date, value: amount });
-                }
-            }
-            return acc;
-        }, []).slice(-7) || [];
-        
-        console.log("Revenue chart data:", revenueChartData);
-
-        const servicesChartData = servicesResponse.data?.reduce((acc, service) => {
-            const date = format(parseISO(service.date_prestation), 'dd/MM');
-            const existing = acc.find(item => item.name === date);
-            if (existing) {
-                existing.value += 1;
-            } else {
-                acc.push({ name: date, value: 1 });
-            }
-            return acc;
-        }, []).slice(-7) || [];
-        
-        console.log("Services chart data:", servicesChartData);
-        console.log("Completed services:", completedServices, "Total services:", totalServices);
-
-        const newReportData = {
-            financial: {
-                title: "Chiffre d'Affaires (Payé)",
-                value: `${totalRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
-                icon: <DollarSign />,
-                description: `${invoicesResponse.data?.length || 0} factures payées (sur ${allInvoicesForChart?.length || 0} total) - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
-                chartType: 'line',
-                data: revenueChartData
-            },
-            operational: {
-                title: "Prestations Terminées",
-                value: `${completedServices}/${totalServices}`,
-                icon: <Truck />,
-                description: `${((completedServices/totalServices)*100 || 0).toFixed(1)}% de réussite - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
-                chartType: 'bar',
-                data: servicesChartData
-            },
-            customer: {
-                title: "Total Clients",
-                value: totalClients.toString(),
-                icon: <Users />,
-                description: `+${newClientsInPeriod} nouveaux clients - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
-                chartType: 'line',
-                data: [
-                    { name: 'Existants', value: totalClients - newClientsInPeriod },
-                    { name: 'Nouveaux', value: newClientsInPeriod }
-                ]
-            },
-            vehicles: {
-                title: "Véhicules Disponibles",
-                value: `${availableVehicles}/${totalVehicles}`,
-                icon: <Truck />,
-                description: `${((availableVehicles/totalVehicles)*100 || 0).toFixed(1)}% de disponibilité`,
-                chartType: 'pie',
-                data: [
-                    { name: 'Disponibles', value: availableVehicles },
-                    { name: 'Occupés', value: totalVehicles - availableVehicles }
-                ]
-            }
-        };
-
-        setReportData(newReportData);
-
-    } catch (error) {
-        console.error("Erreur détaillée:", error);
-        toast({ 
-            title: "Erreur de rapport", 
-            description: error.message || "Impossible de charger les données pour les rapports.", 
-            variant: "destructive"
-        });
-    }
-  }, [timeRange, toast]);
-
-  // Ajouter un effet pour surveiller les changements de timeRange
-  useEffect(() => {
-    console.log("Chargement des données...");
-    fetchDataForReports().catch(error => {
-        console.error("Erreur lors du chargement initial:", error);
-    });
-  }, [fetchDataForReports]);
-
-
-  const handleDataPointChange = (pointId) => {
-    setSelectedDataPoints(prev => 
-      prev.includes(pointId) ? prev.filter(p => p !== pointId) : [...prev, pointId]
-    );
-  };
-  
-  const handlePrintReport = async () => {
-     if (!generatedReportDetails) return;
-     
-     // Utiliser les données déjà calculées depuis reportData au lieu de recalculer
-     const currentRevenueValue = reportData.financial.value; // Ex: "356,40 €"
-     
-     const printWindow = window.open('', '_blank');
-     printWindow.document.write('<html><head><title>Rapport Personnalisé</title>');
-     printWindow.document.write(`
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-          h1, h2, h3 { color: #5E35B1; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          .report-header { text-align: center; margin-bottom: 30px; }
-          .report-section { margin-bottom: 20px; page-break-inside: avoid; }
-          .data-table { width: 100%; margin: 15px 0; }
-          .data-table th { background-color: #5E35B1; color: white; }
-          .chart-section { background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 10px 0; }
-          .summary-box { background-color: #e8f4fd; padding: 10px; border-left: 4px solid #5E35B1; margin: 10px 0; }
-           @media print { .no-print { display: none; } }
-        </style>
-     `);
-     printWindow.document.write('</head><body>');
-     printWindow.document.write('<div class="report-header">');
-     printWindow.document.write(`<h1>Rapport Personnalisé</h1>`);
-     printWindow.document.write(`<p>Type de rapport: ${generatedReportDetails.type}</p>`);
-     printWindow.document.write(`<p>Période: ${timeRangeLabels[generatedReportDetails.period]}</p>`);
-     printWindow.document.write(`<p>Généré le: ${generatedReportDetails.generatedAt}</p>`);
-     printWindow.document.write('</div>');
-
-     for (const point of generatedReportDetails.pointsDetails) {
-        printWindow.document.write('<div class="report-section">');
-        printWindow.document.write(`<h3>${point.label}</h3>`);
-        printWindow.document.write(`<div class="summary-box"><strong>Valeur: ${point.value || 'N/A'}</strong></div>`);
-        
-        // Utiliser les valeurs déjà calculées et affichées correctement
-        if (point.id === 'revenue') {
-          // Utiliser la valeur qui s'affiche correctement dans l'interface
-          point.value = currentRevenueValue;
-        }
-
-        // Ajouter des données réelles selon le type de point
-        try {
-          if (selectedReportType === 'financial_summary') {
-            if (point.id === 'revenue' || point.id === 'paid_invoices') {
-              // Récupérer les données pour l'affichage du tableau, mais utiliser la valeur déjà calculée
-              const now = new Date();
-              let startDate;
-              let endDate = now;
-              switch (timeRange) {
-                  case 'last7days': startDate = subDays(now, 7); break;
-                  case 'last30days': startDate = subDays(now, 30); break;
-                  case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
-                  case 'lastQuarter': startDate = subDays(now, 90); break;
-                  case 'currentYear': startDate = startOfYear(now); break;
-                  case 'allTime': startDate = new Date(2000,0,1); break;
-                  default: startDate = subDays(now, 30);
-              }
-
-              const { data: facturesData } = await supabase
-                .from('factures')
-                .select('numero_facture, montant_ttc, montant_ht, montant, taux_tva, date_emission')
-                .eq('statut', 'Payée')
-                .gte('date_emission', startDate.toISOString())
-                .lte('date_emission', endDate.toISOString())
-                .order('date_emission', { ascending: false })
-                .limit(10);
-              
-              if (facturesData && facturesData.length > 0) {
-                printWindow.document.write('<div class="chart-section">');
-                printWindow.document.write('<h4>Factures payées récentes:</h4>');
-                printWindow.document.write('<table class="data-table">');
-                printWindow.document.write('<thead><tr><th>N° Facture</th><th>Montant TTC</th><th>Date</th></tr></thead>');
-                printWindow.document.write('<tbody>');
-                facturesData.forEach(facture => {
-                  const date = format(parseISO(facture.date_emission), "dd/MM/yyyy", { locale: fr });
-                  
-                  // Utiliser la même logique de calcul que dans fetchDataForReports
-                  let amount = 0;
-                  if (facture.montant_ttc) {
-                      amount = typeof facture.montant_ttc === 'string' ? 
-                          parseFloat(facture.montant_ttc.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                          parseFloat(facture.montant_ttc);
-                  } else if (facture.montant_ht) {
-                      const montantHT = typeof facture.montant_ht === 'string' ? 
-                          parseFloat(facture.montant_ht.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                          parseFloat(facture.montant_ht);
-                      const tauxTVA = parseFloat(facture.taux_tva || 0.20);
-                      amount = montantHT * (1 + tauxTVA);
-                  } else if (facture.montant) {
-                      const montantHT = typeof facture.montant === 'string' ? 
-                          parseFloat(facture.montant.replace(/[^0-9.,]/g, '').replace(',', '.')) : 
-                          parseFloat(facture.montant);
-                      const tauxTVA = parseFloat(facture.taux_tva || 0.20);
-                      amount = montantHT * (1 + tauxTVA);
-                  }
-                  
-                  printWindow.document.write(`<tr><td>${facture.numero_facture}</td><td>${amount.toFixed(2)} €</td><td>${date}</td></tr>`);
-                });
-                printWindow.document.write('</tbody></table></div>');
-              }
-            }
-          } else if (selectedReportType === 'customer_insights') {
-            if (point.id === 'total_customers') {
-              // Utiliser la valeur déjà calculée
-              point.value = reportData.customer.value;
-              
-              const { data: clientsData } = await supabase
-                .from('clients')
-                .select('nom, created_at')
-                .order('created_at', { ascending: false })
-                .limit(10);
-              
-              if (clientsData && clientsData.length > 0) {
-                printWindow.document.write('<div class="chart-section">');
-                printWindow.document.write('<h4>Derniers clients ajoutés:</h4>');
-                printWindow.document.write('<table class="data-table">');
-                printWindow.document.write('<thead><tr><th>Nom du Client</th><th>Date d\'ajout</th></tr></thead>');
-                printWindow.document.write('<tbody>');
-                clientsData.forEach(client => {
-                  const date = format(parseISO(client.created_at), "dd/MM/yyyy", { locale: fr });
-                  printWindow.document.write(`<tr><td>${client.nom}</td><td>${date}</td></tr>`);
-                });
-                printWindow.document.write('</tbody></table></div>');
-              }
-            }
-          } else if (selectedReportType === 'operational_efficiency') {
-            if (point.id === 'completed_services' || point.id === 'pending_services') {
-              const { data: prestationsData } = await supabase
-                .from('prestations')
-                .select('id, type_prestation, statut, date_prestation')
-                .gte('date_prestation', startDate.toISOString())
-                .lte('date_prestation', endDate.toISOString())
-                .order('date_prestation', { ascending: false })
-                .limit(10);
-              
-              if (prestationsData && prestationsData.length > 0) {
-                printWindow.document.write('<div class="chart-section">');
-                printWindow.document.write('<h4>Prestations récentes:</h4>');
-                printWindow.document.write('<table class="data-table">');
-                printWindow.document.write('<thead><tr><th>Type</th><th>Statut</th><th>Date</th></tr></thead>');
-                printWindow.document.write('<tbody>');
-                prestationsData.forEach(prestation => {
-                  const date = format(parseISO(prestation.date_prestation), "dd/MM/yyyy", { locale: fr });
-                  printWindow.document.write(`<tr><td>${prestation.type_prestation}</td><td>${prestation.statut}</td><td>${date}</td></tr>`);
-                });
-                printWindow.document.write('</tbody></table></div>');
-              }
-            }
-          } else if (selectedReportType === 'vehicle_utilization') {
-            if (point.id === 'total_vehicles' || point.id === 'available_vehicles') {
-              const { data: vehiculesData } = await supabase
-                .from('vehicules')
-                .select('immatriculation, type, statut')
-                .order('immatriculation', { ascending: true });
-              
-              if (vehiculesData && vehiculesData.length > 0) {
-                printWindow.document.write('<div class="chart-section">');
-                printWindow.document.write('<h4>État des véhicules:</h4>');
-                printWindow.document.write('<table class="data-table">');
-                printWindow.document.write('<thead><tr><th>Immatriculation</th><th>Type</th><th>Statut</th></tr></thead>');
-                printWindow.document.write('<tbody>');
-                vehiculesData.forEach(vehicule => {
-                  printWindow.document.write(`<tr><td>${vehicule.immatriculation}</td><td>${vehicule.type}</td><td>${vehicule.statut}</td></tr>`);
-                });
-                printWindow.document.write('</tbody></table></div>');
-              }
-            }
+        setReportData(prev => ({
+          ...prev,
+          financial: {
+            title: "Chiffre d'Affaires",
+            value: `${totalRevenue.toLocaleString('fr-FR')} €`,
+            icon: <DollarSign />,
+            description: `${invoicesResponse.data?.length || 0} factures - ${timeRangeLabels[timeRange]?.toLowerCase()}`,
+            chartType: "line",
+            data: revenueData.slice(-7)
+          },
+          operational: {
+            title: "Prestations Terminées",
+            value: `${completedServices}/${totalServices}`,
+            icon: <TrendingUp />,
+            description: `${((completedServices/totalServices)*100 || 0).toFixed(1)}% de réussite`,
+            chartType: "bar",
+            data: servicesData.slice(-7)
+          },
+          customer: {
+            title: "Total Clients",
+            value: totalClients.toString(),
+            icon: <Users />,
+            description: `+${newClients} nouveaux clients`,
+            chartType: "line",
+            data: [
+              { name: 'Existants', value: totalClients - newClients },
+              { name: 'Nouveaux', value: newClients }
+            ]
+          },
+          vehicles: {
+            title: "Véhicules Disponibles",
+            value: `${availableVehicles}/${totalVehicles}`,
+            icon: <Truck />,
+            description: `${((availableVehicles/totalVehicles)*100 || 0).toFixed(1)}% de disponibilité`,
+            chartType: "pie",
+            data: [
+              { name: 'Disponibles', value: availableVehicles },
+              { name: 'Occupés', value: totalVehicles - availableVehicles }
+            ]
           }
-        } catch (error) {
-          console.error('Erreur lors de la récupération des données pour l\'impression:', error);
-          printWindow.document.write('<div class="chart-section">');
-          printWindow.document.write('<p><em>Données non disponibles pour cette visualisation</em></p>');
-          printWindow.document.write('</div>');
-        }
-        
-        printWindow.document.write('</div>');
-     }
-     
-     printWindow.document.write('<script>setTimeout(() => { window.print(); window.close(); }, 500);</script>');
-     printWindow.document.write('</body></html>');
-     printWindow.document.close();
-  };
-
-  const downloadReportAsCSV = () => {
-    if (!generatedReportDetails) return;
-    
-    const csvContent = [
-      ['Type de Rapport', 'Période', 'Généré le'],
-      [generatedReportDetails.type, timeRangeLabels[generatedReportDetails.period], generatedReportDetails.generatedAt],
-      [''],
-      ['Données', 'Valeur'],
-      ...generatedReportDetails.pointsDetails.map(point => [point.label, point.value])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `rapport_${generatedReportDetails.type.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-    
-    toast({
-      title: "Téléchargement réussi",
-      description: "Le rapport CSV a été téléchargé avec succès.",
-    });
-  };
-
-  const downloadReportAsExcel = () => {
-    if (!generatedReportDetails) return;
-    
-    // Simulation d'un fichier Excel en format CSV avec en-têtes spécifiques
-    const excelContent = [
-      ['RAPPORT PERSONNALISÉ'],
-      [''],
-      ['Type de Rapport:', generatedReportDetails.type],
-      ['Période:', timeRangeLabels[generatedReportDetails.period]],
-      ['Généré le:', generatedReportDetails.generatedAt],
-      [''],
-      ['DONNÉES DÉTAILLÉES'],
-      ['Métrique', 'Valeur'],
-      ...generatedReportDetails.pointsDetails.map(point => [point.label, point.value])
-    ].map(row => row.join('\t')).join('\n');
-
-    const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `rapport_${generatedReportDetails.type.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xls`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-    
-    toast({
-      title: "Téléchargement réussi",
-      description: "Le rapport Excel a été téléchargé avec succès.",
-    });
-  };
-
-  const handleDownloadReport = () => {
-    if (!generatedReportDetails) return;
-    
-    switch (exportFormat) {
-      case 'pdf':
-        handlePrintReport();
-        break;
-      case 'csv':
-        downloadReportAsCSV();
-        break;
-      case 'xlsx':
-        downloadReportAsExcel();
-        break;
-      default:
+        }));
+      } catch (error) {
+        console.error('Error fetching other data:', error);
         toast({
-          title: "Format non supporté",
-          description: "Ce format d'export n'est pas encore disponible.",
+          title: "Erreur",
+          description: "Impossible de charger certaines données du tableau de bord",
           variant: "destructive"
         });
-    }
-  };
+      } finally {
+        setLoading(prev => ({ 
+          ...prev, 
+          financial: false,
+          operational: false,
+          customer: false,
+          vehicles: false
+        }));
+      }
+    };
 
-  const generateReport = async () => {
+    // Lancer les deux fetchs en parallèle
+    fetchManpowerData();
+    fetchOtherData();
+  }, [timeRange, toast]);
+
+  useEffect(() => {
+    // Écouter les changements dans la table prestations
+    const channel = supabase
+      .channel('prestations_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',  // écouter tous les événements (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'prestations'
+        },
+        (payload) => {
+          // Recharger les données quand il y a un changement
+          generateReport();
+        }
+      )
+      .subscribe();
+
+    // Nettoyage quand le composant est démonté
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);  // Exécuter une seule fois au montage du composant
+
+  const generateReport = useCallback(async () => {
     if (!selectedReportType || selectedDataPoints.length === 0) {
-      toast({ title: "Configuration incomplète", description: "Veuillez sélectionner un type et au moins un point de donnée.", variant: "destructive" });
+      toast({
+        title: "Configuration incomplète",
+        description: "Veuillez sélectionner un type et au moins un point de donnée.",
+        variant: "destructive"
+      });
       return;
     }
 
     const now = new Date();
     let startDate;
     let endDate = now;
+    
     switch (timeRange) {
-        case 'last7days': startDate = subDays(now, 7); break;
-        case 'last30days': startDate = subDays(now, 30); break;
-        case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
-        case 'lastQuarter': startDate = subDays(now, 90); break;
-        case 'currentYear': startDate = startOfYear(now); break; 
-        case 'allTime': startDate = new Date(2000,0,1); break;
-        default: startDate = subDays(now, 30);
+      case 'last7days': startDate = subDays(now, 7); break;
+      case 'last30days': startDate = subDays(now, 30); break;
+      case 'currentMonth': startDate = startOfMonth(now); endDate = endOfMonth(now); break;
+      case 'lastQuarter': startDate = subDays(now, 90); break;
+      case 'currentYear': startDate = startOfYear(now); break;
+      case 'allTime': startDate = new Date(2000, 0, 1); break;
+      default: startDate = subDays(now, 30);
     }
-    const sDate = startDate.toISOString().split('T')[0];
-    const eDate = endDate.toISOString().split('T')[0];
 
     const pointsDetails = [];
 
     for (const pointId of selectedDataPoints) {
-        const pointLabel = dataPointsOptions[selectedReportType]?.find(opt => opt.id === pointId)?.label || pointId;
-        let value = 'N/A (Donnée non calculée)';
+      const pointLabel = dataPointsOptions[selectedReportType]?.find(opt => opt.id === pointId)?.label || pointId;
+      let value = 'N/A';
 
-        try {
-            if (selectedReportType === 'financial_summary') {
-                switch (pointId) {
-                    case 'revenue':
-                        // Utiliser la valeur déjà calculée qui s'affiche correctement
-                        value = reportData.financial.value;
-                        break;
-                    case 'paid_invoices':
-                        const { count: paidCount, error: paidError } = await supabase
-                            .from('factures')
-                            .select('*', {count: 'exact', head: true})
-                            .eq('statut', 'Payée')
-                            .gte('date_emission', sDate)
-                            .lte('date_emission', eDate);
-                        if (!paidError) value = `${paidCount} factures`;
-                        break;
-                    case 'pending_invoices':
-                        const { count: pendingCount, error: pendingError } = await supabase
-                            .from('factures')
-                            .select('*', {count: 'exact', head: true})
-                            .eq('statut', 'En Attente')
-                            .gte('date_emission', sDate)
-                            .lte('date_emission', eDate);
-                        if (!pendingError) value = `${pendingCount} factures`;
-                        break;
-                }
-            } else if (selectedReportType === 'operational_efficiency') {
-                switch (pointId) {
-                    case 'completed_services':
-                        const { count: completedCount, error: completedError } = await supabase
-                            .from('prestations')
-                            .select('*', {count: 'exact', head: true})
-                            .eq('statut', 'Terminée')
-                            .gte('date_prestation', sDate)
-                            .lte('date_prestation', eDate);
-                        if (!completedError) value = `${completedCount} prestations`;
-                        break;
-                    case 'pending_services':
-                        const { count: pendingServicesCount, error: pendingServicesError } = await supabase
-                            .from('prestations')
-                            .select('*', {count: 'exact', head: true})
-                            .eq('statut', 'En Cours')
-                            .gte('date_prestation', sDate)
-                            .lte('date_prestation', eDate);
-                        if (!pendingServicesError) value = `${pendingServicesCount} prestations`;
-                        break;
-                }
-            } else if (selectedReportType === 'customer_insights') {
-                switch (pointId) {
-                    case 'total_customers':
-                        const { count: totalCustomers, error: customersError } = await supabase
-                            .from('clients')
-                            .select('*', {count: 'exact', head: true});
-                        if (!customersError) value = `${totalCustomers} clients`;
-                        break;
-                    case 'new_customers_period':
-                        const { count: newCustomers, error: newCustomersError } = await supabase
-                            .from('clients')
-                            .select('*', {count: 'exact', head: true})
-                            .gte('created_at', sDate)
-                            .lte('created_at', eDate);
-                        if (!newCustomersError) value = `${newCustomers} nouveaux clients`;
-                        break;
-                }
-            } else if (selectedReportType === 'vehicle_utilization') {
-                switch (pointId) {
-                    case 'total_vehicles':
-                        const { count: totalVehicles, error: vehiclesError } = await supabase
-                            .from('vehicules')
-                            .select('*', {count: 'exact', head: true});
-                        if (!vehiclesError) value = `${totalVehicles} véhicules`;
-                        break;
-                    case 'available_vehicles':
-                        const { count: availableVehicles, error: availableError } = await supabase
-                            .from('vehicules')
-                            .select('*', {count: 'exact', head: true})
-                            .eq('statut', 'Disponible');
-                        if (!availableError) value = `${availableVehicles} véhicules disponibles`;
-                        break;
-                }
+      try {
+        if (selectedReportType === 'manpower_distribution') {
+          const { data: prestationsData, error: prestationsError } = await supabase
+            .from('prestations')
+            .select(`
+              nombre_manutentionnaires,
+              client_id,
+              clients (
+                id,
+                nom
+              )
+            `)
+            .gte('date_prestation', startDate.toISOString())
+            .lte('date_prestation', endDate.toISOString());
+
+          if (!prestationsError && prestationsData) {
+            const clientManpowerMap = prestationsData.reduce((acc, p) => {
+              // S'assurer que le client existe
+              if (!p.clients) return acc;
+              
+              const clientName = p.clients.nom;
+              if (!acc[clientName]) {
+                acc[clientName] = {
+                  total: 0,
+                  count: 0
+                };
+              }
+              
+              // Incrémenter le compteur de prestations
+              acc[clientName].count += 1;
+              
+              // Ajouter les manutentionnaires si présents
+              if (p.nombre_manutentionnaires) {
+                acc[clientName].total += p.nombre_manutentionnaires;
+              }
+              
+              return acc;
+            }, {});
+
+            // Transformer les données pour le graphique
+            const chartData = Object.entries(clientManpowerMap)
+              .map(([name, data]) => ({
+                name,
+                value: data.total,
+                average: data.total / data.count,
+                totalServices: data.count
+              }))
+              .sort((a, b) => b.value - a.value);  // Trier par nombre de manutentionnaires
+
+            if (pointId === 'manpower_by_client') {
+              value = `${chartData.length} sites, ${chartData.reduce((acc, item) => acc + item.value, 0)} manutentionnaires`;
             }
-        } catch (error) {
-            console.error(`Erreur calcul ${pointId}:`, error);
-            value = 'Erreur de calcul';
+          }
         }
-        
-        pointsDetails.push({ id: pointId, label: pointLabel, value });
-    }
+        // Ajouter d'autres types de rapports ici si nécessaire
+      } catch (error) {
+        console.error(`Erreur calcul ${pointId}:`, error);
+        value = 'Erreur de calcul';
+      }
 
+      pointsDetails.push({ id: pointId, label: pointLabel, value });
+    }
 
     const currentReportDetails = {
       type: reportTypes.find(rt => rt.value === selectedReportType)?.label,
-      pointsDetails: pointsDetails, // Store detailed points with values
+      pointsDetails: pointsDetails,
       period: timeRange,
       format: exportFormat,
-      generatedAt: format(new Date(), "dd/MM/yyyy HH:mm", {locale: fr}),
+      generatedAt: format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr })
     };
-    setGeneratedReportDetails(currentReportDetails);
 
+    setGeneratedReportDetails(currentReportDetails);
 
     toast({
       title: `Rapport "${currentReportDetails.type}" généré`,
-      description: `${currentReportDetails.pointsDetails.map(p => p.label).join(', ')} pour ${timeRangeLabels[currentReportDetails.period]}. Format: ${currentReportDetails.format}.`,
-      duration: 10000,
-      action: (
-        <div className="flex flex-col space-y-2">
-            <Button variant="outline" size="sm" onClick={handlePrintReport}>
-                <Printer className="mr-2 h-4 w-4" /> Imprimer PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadReport}>
-                <Download className="mr-2 h-4 w-4" /> Télécharger ({exportFormat.toUpperCase()})
-            </Button>
-        </div>
-      )
+      description: `${currentReportDetails.pointsDetails.map(p => p.label).join(', ')} pour ${timeRangeLabels[currentReportDetails.period]}`,
+      duration: 5000
     });
-  };
-
+  }, [selectedReportType, selectedDataPoints, timeRange, exportFormat, toast]);
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground"></h1>
+        <p className="text-muted-foreground"></p>
+      </div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Rapports et Statistiques</h1>
@@ -871,10 +788,20 @@ const ReportsPage = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <ReportCard {...reportData.financial} />
-        <ReportCard {...reportData.operational} />
-        <ReportCard {...reportData.customer} />
+        {reportData.financial && <ReportCard {...reportData.financial} />}
+        {reportData.operational && <ReportCard {...reportData.operational} />}
+        {reportData.customer && <ReportCard {...reportData.customer} />}
         {reportData.vehicles && <ReportCard {...reportData.vehicles} />}
+      </div>
+      
+      {/* Widget Manutentionnaires */}
+      <div className="grid gap-4">
+        {reportData.manpower && (
+          <ManpowerDistributionWidget 
+            data={reportData.manpower}
+            timeRange={timeRange}
+          />
+        )}
       </div>
 
       <Card className="shadow-xl border-none bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">

@@ -67,7 +67,7 @@ const LoginPage = () => {
                 <Input
                   id="identifier"
                   type="text"
-                  placeholder="genesis, user, ou votre_email@example.com"
+                  placeholder="votre_email@example.com"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   required

@@ -43,12 +43,12 @@ const InvoiceFormDialog = ({ isOpen, onClose, onSubmit, invoice }) => {
       if (clientsError) console.error("Error fetching clients for invoice form", clientsError);
       else setClients(clientsData || []);
 
-      const { data: prestationsData, error: prestationsError } = await supabase.from('prestations').select('id, type_prestation, client_id, clients(nom)');
+      const { data: prestationsData, error: prestationsError } = await supabase.from('prestations').select('id, client_id, clients(nom), nom_client');
       if (prestationsError) console.error("Error fetching prestations for invoice form", prestationsError);
       else {
         const formattedPrestations = prestationsData.map(p => ({
           ...p,
-          displayName: `${p.id.substring(0,8)}... (${p.type_prestation}) - Client: ${p.clients?.nom || 'N/A'}`
+          displayName: `${p.id.substring(0,8)}... - Client: ${p.clients?.nom || 'N/A'} - ${p.nom_client || 'N/A'}`
         }));
         setPrestations(formattedPrestations || []);
       }
